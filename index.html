@@ -112,6 +112,21 @@
   .strategy-block ul{ margin:0; padding-left:18px; font-size:13px; line-height:1.7; }
   .strategy-block li{ margin-bottom: 4px; }
   .strategy-note{ font-size:11px; color:var(--muted); margin-top:10px; border-top:1px solid var(--line); padding-top:10px; }
+  .signal-box{ margin-bottom:16px; padding:10px 12px; background:var(--panel-2); border:1px solid var(--line); border-radius:3px; font-size:13.5px; line-height:1.6; }
+
+  .whale-controls{ display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+  .whale-controls select{ background:var(--panel); border:1px solid var(--line); color:var(--text); font-family:var(--mono); font-size:12px; padding:6px 8px; border-radius:3px; flex:1; min-width:160px; }
+  .whale-controls button{ background:var(--gold); color:#1a1305; border:none; font-family:var(--sans); font-weight:600; font-size:12px; padding:6px 14px; border-radius:3px; cursor:pointer; }
+  .pie-wrap{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .pie-chart{ width:140px; height:140px; border-radius:50%; flex-shrink:0; }
+  .pie-legend{ flex:1; min-width:180px; font-size:12px; font-family:var(--mono); }
+  .pie-legend-item{ display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+  .pie-swatch{ width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+
+  .news-item{ padding:8px 0; border-bottom:1px solid #EEF1F3; font-size:13px; }
+  .news-item:last-child{ border-bottom:none; }
+  .news-item a{ color:var(--text); font-weight:500; }
+  .news-item .news-date{ font-size:11px; color:var(--muted); font-family:var(--mono); display:block; margin-top:2px; }
 </style>
 </head>
 <body>
@@ -119,7 +134,7 @@
 
   <header class="top">
     <h1>股票研究終端</h1>
-    <span class="sub">基本面 · K線 · 策略摘要 · 選擇權情緒 · 總經 · 大戶籌碼</span>
+    <span class="sub">基本面 · K線 · 策略摘要 · 相關新聞 · 總經 · 大戶籌碼</span>
   </header>
 
   <div class="search-row">
@@ -141,14 +156,15 @@
       <div class="panel">
         <h2>K線走勢（近6個月，日線）</h2>
         <div id="chart"></div>
+        <div class="signal-box" id="klineSignal" style="margin-top:12px;">查詢後顯示均線位置與近期振幅的訊號判讀</div>
       </div>
       <div class="panel" id="strategyPanel">
         <h2>短線／長線觀察摘要</h2>
-        <div class="empty">查詢後根據價格動能、估值與選擇權籌碼自動整理</div>
+        <div class="empty">查詢後根據價格動能、估值與選擇權籌碼自動整理，含選擇權策略方向</div>
       </div>
-      <div class="panel" id="optionsPanel">
-        <h2>選擇權市場情緒</h2>
-        <div class="empty">查詢後顯示 Put/Call Ratio 與隱含波動率</div>
+      <div class="panel" id="newsPanel">
+        <h2>近期相關新聞</h2>
+        <div class="empty">查詢後顯示近期相關報導</div>
       </div>
     </div>
 
@@ -162,29 +178,33 @@
         <div class="tab-content active" id="macroTab">
           <h2>總體經濟現況 <span class="note">手動維護快照</span></h2>
           <div class="kv" id="macroKv"></div>
+          <div class="subhead">近期全球重大事件與影響</div>
+          <ul id="macroEvents" style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.7;"></ul>
           <div class="macro-date" id="macroDate"></div>
         </div>
 
         <div class="tab-content" id="whaleTab">
           <h2>大戶籌碼參考 <span class="note">申報延遲，非即時</span></h2>
-          <div class="subhead">政治人物（STOCK Act 揭露，通常延遲30–45天）</div>
+          <div class="subhead">政治人物（STOCK Act 揭露，僅個別交易紀錄）</div>
           <table>
             <thead><tr><th>人物</th><th>說明</th><th>來源</th></tr></thead>
             <tbody id="politicianTbl"></tbody>
           </table>
-          <div class="subhead">知名基金經理人（13F，每季揭露，延遲可達45天）</div>
-          <table>
-            <thead><tr><th>人物 / 機構</th><th>說明</th><th>來源</th></tr></thead>
-            <tbody id="whaleTbl"></tbody>
-          </table>
-          <div class="whale-date">開啟來源連結後，於頁面內搜尋你查詢的代號，確認是否為其持股之一。</div>
+          <div class="whale-date">政治人物揭露的是「單筆交易」，不是完整持股比重，所以無法做成產業佔比圖；開連結後自行搜尋你查詢的代號確認是否有交易紀錄。</div>
+
+          <div class="subhead">知名基金經理人（13F 持股佔比，每季揭露，延遲可達45天）</div>
+          <div class="whale-controls">
+            <select id="whaleSelect"></select>
+            <button id="whaleLoadBtn">載入持股佔比</button>
+          </div>
+          <div id="whalePieArea"><div class="empty">選擇人物後點「載入持股佔比」，會直接向SEC調取最新13F申報並畫圖（檔案較大，需要幾秒到二十秒）</div></div>
         </div>
       </div>
     </div>
   </div>
 
   <div class="disclaimer">
-    本工具僅整合公開資料以輔助研究，不構成投資建議。K線與基本面資料經由免費、非官方的資料端點取得，可能延遲、缺漏或因來源政策調整而失效；總經數字與大戶持股為人工維護的參考快照，需自行核對最新申報。選擇權情緒指標（IV、Put/Call Ratio）反映的是市場籌碼與預期，不是方向保證。所有交易決策請自行判斷並承擔風險。
+    本工具僅整合公開資料以輔助研究，不構成投資建議。K線與基本面資料經由免費、非官方的資料端點取得，可能延遲、缺漏或因來源政策調整而失效；總經數字為人工維護的參考快照，需自行核對最新數據；13F持股佔比為機構最近一次申報的靜態快照，反映的是申報當下、不是現在的部位。短線／長線觀察摘要與選擇權策略方向，是把上述數字轉成的機械式、規則導向的資料判讀，不是針對你個人情況的投資建議，也不構成買賣訊號；實際部位大小、進出場時機與風險承受度，請自行判斷並承擔風險。
   </div>
 
 </div>
@@ -196,9 +216,14 @@ const MACRO_SNAPSHOT = {
   rows: [
     ["聯邦基金利率目標區間", "3.50% – 3.75%"],
     ["失業率", "4.2%"],
-    ["CPI（年增，預估）", "約 6.0%（受中東情勢推升能源價格影響）"],
+    ["CPI（年增，預估）", "約 6.0%"],
     ["核心CPI（年增，預估）", "約 3.2%"],
     ["下次FOMC會議", "2026-09-15 ~ 09-16"],
+  ],
+  globalEvents: [
+    "中東情勢升溫推升能源價格，是近期CPI上行壓力的主要外部因素之一",
+    "Fed在通膨仍偏高與就業降溫之間權衡，9月FOMC是否降息、降多少為市場焦點",
+    "美股財報季表現分歧，AI相關資本支出仍是主要成長敘事，但估值分歧擴大",
   ]
 };
 
@@ -207,30 +232,35 @@ const POLITICIANS = [
   ["Nancy Pelosi", "前眾議院議長，交易多由配偶執行，2027年將退休、屆時停止揭露", "https://www.capitoltrades.com/politicians/P000197"],
   ["Donald Trump", "現任總統，個人資產以OGE年度財產申報揭露，頻率遠低於國會議員、顆粒度也較粗", "https://www.capitoltrades.com/politicians"],
 ];
-const WHALES = [
-  ["Warren Buffett（Berkshire Hathaway）", "價值投資代表，持股集中、換手率低", "https://whalewisdom.com/filer/berkshire-hathaway-inc"],
-  ["Michael Burry（Scion Asset Management）", "以逆向、事件驅動聞名，持股集中度高、常見選擇權部位", "https://whalewisdom.com/filer/scion-asset-management-llc"],
-  ["Ray Dalio（Bridgewater Associates）", "全天候/風險平價策略創始人，宏觀對沖視角", "https://whalewisdom.com/filer/bridgewater-associates-inc"],
-  ["Cathie Wood（ARK Invest）", "高成長顛覆性創新主題，波動大、集中度高", "https://whalewisdom.com/filer/ark-investment-management-llc"],
-  ["Bill Gates（Gates Foundation Trust）", "長期持有型，捐贈基金屬性、換手率極低", "https://whalewisdom.com/search?s=Bill+%26+Melinda+Gates+Foundation+Trust"],
-];
+
+// 13F申報者（有CIK，可直接向SEC調取持股明細計算佔比）
+const FUND_MANAGERS = {
+  berkshire:   { name: "Warren Buffett（Berkshire Hathaway）", cik: "0001067983" },
+  scion:       { name: "Michael Burry（Scion Asset Management）", cik: "0001649339" },
+  bridgewater: { name: "Ray Dalio（Bridgewater Associates）", cik: "0001350694" },
+  ark:         { name: "Cathie Wood（ARK Investment Management）", cik: "0001697748" },
+  gates:       { name: "Bill Gates（Gates Foundation Trust）", cik: "0001166559" },
+};
 
 function renderMacro(){
   document.getElementById('macroKv').innerHTML = MACRO_SNAPSHOT.rows.map(r =>
     `<div class="l">${r[0]}</div><div class="v">${r[1]}</div>`
   ).join('');
+  document.getElementById('macroEvents').innerHTML = MACRO_SNAPSHOT.globalEvents.map(e => `<li>${e}</li>`).join('');
   document.getElementById('macroDate').textContent = "資料快照日期：" + MACRO_SNAPSHOT.asOf;
 }
-function renderWhaleTables(){
+function renderPoliticianTable(){
   document.getElementById('politicianTbl').innerHTML = POLITICIANS.map(p =>
     `<tr><td>${p[0]}</td><td>${p[1]}</td><td><a href="${p[2]}" target="_blank" rel="noopener">查看</a></td></tr>`
   ).join('');
-  document.getElementById('whaleTbl').innerHTML = WHALES.map(p =>
-    `<tr><td>${p[0]}</td><td>${p[1]}</td><td><a href="${p[2]}" target="_blank" rel="noopener">查看</a></td></tr>`
-  ).join('');
+}
+function renderWhaleSelect(){
+  const sel = document.getElementById('whaleSelect');
+  sel.innerHTML = Object.entries(FUND_MANAGERS).map(([key,v]) => `<option value="${key}">${v.name}</option>`).join('');
 }
 renderMacro();
-renderWhaleTables();
+renderPoliticianTable();
+renderWhaleSelect();
 
 /* ============ 側欄分頁切換 ============ */
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -263,7 +293,7 @@ function initChart(){
 }
 initChart();
 
-/* ============ 資料抓取 ============ */
+/* ============ 資料抓取共用工具 ============ */
 function setStatus(msg, cls){
   const s = document.getElementById('status');
   s.textContent = msg || '';
@@ -280,6 +310,17 @@ async function fetchJson(url, timeoutMs=10000){
     const res = await fetch(proxied(url), { signal: ctrl.signal });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     return await res.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+async function fetchText(url, timeoutMs=20000){
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try{
+    const res = await fetch(proxied(url), { signal: ctrl.signal });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.text();
   } finally {
     clearTimeout(t);
   }
@@ -301,7 +342,7 @@ function fmtBig(n){
   return fmtNum(n);
 }
 
-// chart端點回傳的 meta 就含基本報價資訊，不需要crumb驗證，穩定度較高
+/* ============ K線 + 基本報價（chart端點，不需crumb） ============ */
 async function loadChart(ticker){
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=6mo&interval=1d`;
   const data = await fetchJson(url);
@@ -319,7 +360,6 @@ async function loadChart(ticker){
   return { meta: res.meta || {}, bars };
 }
 
-// 基本面：先用chart meta（穩定、不需crumb）打底顯示，quoteSummary（完整財務指標）另外嘗試、失敗不影響已顯示內容
 function renderBasicQuote(meta, ticker){
   const cur = meta.regularMarketPrice;
   const prevClose = meta.chartPreviousClose ?? meta.previousClose;
@@ -336,33 +376,63 @@ function renderBasicQuote(meta, ticker){
       <div class="l">幣別</div><div class="v">${meta.currency || '—'}</div>
       <div class="l">成交量</div><div class="v">${fmtBig(meta.regularMarketVolume)}</div>
     </div>
-    <div class="kv" id="extraFundamentals" style="margin-top:8px;">
-      <div class="l" style="grid-column:1/3;color:var(--muted);font-size:11px;">完整財務指標載入中…</div>
+    <div id="extraFundamentals" style="margin-top:8px;">
+      <div style="color:var(--muted);font-size:11px;">完整財報與展望資訊載入中…</div>
     </div>
   `;
 }
+
+/* ============ 完整基本面：財務指標＋主要業務／收入來源＋近期財報表現＋分析師評等趨勢 ============ */
 function renderExtraFundamentals(r){
   const sd = r.summaryDetail || {};
   const ks = r.defaultKeyStatistics || {};
   const fd = r.financialData || {};
   const price = r.price || {};
-  document.getElementById('extraFundamentals').innerHTML = `
-    <div class="l">市值</div><div class="v">${fmtBig(price.marketCap?.raw)}</div>
-    <div class="l">本益比 (TTM)</div><div class="v">${fmtNum(sd.trailingPE?.raw)}</div>
-    <div class="l">預估本益比</div><div class="v">${fmtNum(sd.forwardPE?.raw)}</div>
-    <div class="l">EPS (TTM)</div><div class="v">${fmtNum(ks.trailingEps?.raw)}</div>
-    <div class="l">股價淨值比</div><div class="v">${fmtNum(ks.priceToBook?.raw)}</div>
-    <div class="l">殖利率</div><div class="v">${fmtPct(sd.dividendYield?.raw)}</div>
-    <div class="l">Beta</div><div class="v">${fmtNum(sd.beta?.raw)}</div>
-    <div class="l">營收成長 (YoY)</div><div class="v">${fmtPct(fd.revenueGrowth?.raw)}</div>
-    <div class="l">毛利率</div><div class="v">${fmtPct(fd.grossMargins?.raw)}</div>
-    <div class="l">分析師目標價</div><div class="v">${fmtNum(fd.targetMeanPrice?.raw)}</div>
-    <div class="l">分析師建議</div><div class="v">${fd.recommendationKey || '—'}</div>
+  const ap = r.assetProfile || {};
+  const eh = (r.earningsHistory && r.earningsHistory.history) || [];
+  const rt = (r.recommendationTrend && r.recommendationTrend.trend) || [];
+
+  let html = `
+    <div class="kv">
+      <div class="l">市值</div><div class="v">${fmtBig(price.marketCap?.raw)}</div>
+      <div class="l">本益比 (TTM)</div><div class="v">${fmtNum(sd.trailingPE?.raw)}</div>
+      <div class="l">預估本益比</div><div class="v">${fmtNum(sd.forwardPE?.raw)}</div>
+      <div class="l">EPS (TTM)</div><div class="v">${fmtNum(ks.trailingEps?.raw)}</div>
+      <div class="l">股價淨值比</div><div class="v">${fmtNum(ks.priceToBook?.raw)}</div>
+      <div class="l">殖利率</div><div class="v">${fmtPct(sd.dividendYield?.raw)}</div>
+      <div class="l">Beta</div><div class="v">${fmtNum(sd.beta?.raw)}</div>
+      <div class="l">營收成長 (YoY)</div><div class="v">${fmtPct(fd.revenueGrowth?.raw)}</div>
+      <div class="l">毛利率</div><div class="v">${fmtPct(fd.grossMargins?.raw)}</div>
+      <div class="l">分析師目標價</div><div class="v">${fmtNum(fd.targetMeanPrice?.raw)}</div>
+      <div class="l">分析師建議</div><div class="v">${fd.recommendationKey || '—'}</div>
+    </div>
   `;
+
+  if(ap.sector || ap.industry){
+    html += `<div class="macro-date" style="margin-top:10px;">產業別：${ap.sector||'—'} ／ ${ap.industry||'—'}</div>`;
+  }
+  if(ap.longBusinessSummary){
+    const s = ap.longBusinessSummary;
+    html += `<div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:8px;">${s.slice(0,220)}${s.length>220?'…':''}</div>`;
+  }
+  if(eh.length){
+    const rows = eh.slice(-4).reverse().map(q => {
+      const label = q.quarter?.fmt || (q.quarter?.raw ? new Date(q.quarter.raw*1000).toISOString().slice(0,7) : '—');
+      return `<tr><td>${label}</td><td>${fmtNum(q.epsActual?.raw)}</td><td>${fmtNum(q.epsEstimate?.raw)}</td><td>${fmtPct(q.surprisePercent?.raw)}</td></tr>`;
+    }).join('');
+    html += `<div class="subhead" style="margin-top:12px;">近期財報表現（EPS 實際 vs 預估）</div>
+      <table><thead><tr><th>季度</th><th>實際</th><th>預估</th><th>差異%</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  if(rt.length){
+    const t0 = rt[0];
+    html += `<div class="macro-date" style="margin-top:8px;">分析師評等（目前）：強力買進${t0.strongBuy ?? '—'} / 買進${t0.buy ?? '—'} / 持有${t0.hold ?? '—'} / 賣出${t0.sell ?? '—'} / 強力賣出${t0.strongSell ?? '—'}</div>`;
+  }
+  document.getElementById('extraFundamentals').innerHTML = html;
 }
+
 async function loadExtraFundamentals(ticker){
   try{
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=price,summaryDetail,defaultKeyStatistics,financialData`;
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=price,summaryDetail,defaultKeyStatistics,financialData,assetProfile,earningsHistory,recommendationTrend`;
     const data = await fetchJson(url);
     const r = data?.quoteSummary?.result?.[0];
     if(!r) throw new Error('無資料');
@@ -375,13 +445,13 @@ async function loadExtraFundamentals(ticker){
     };
   }catch(e){
     const el = document.getElementById('extraFundamentals');
-    if(el) el.innerHTML = `<div class="l" style="grid-column:1/3;color:var(--muted);font-size:11px;">完整財務指標暫時無法取得（Yahoo端點需要驗證，非代理問題），已顯示的即時報價不受影響</div>`;
+    if(el) el.innerHTML = `<div style="color:var(--muted);font-size:11px;">完整財報與展望資訊暫時無法取得（Yahoo端點需要驗證，非代理問題），已顯示的即時報價不受影響</div>`;
     return null;
   }
 }
 
-async function loadOptions(ticker){
-  const panel = document.getElementById('optionsPanel');
+/* ============ 選擇權籌碼（僅供策略摘要使用，不單獨顯示面板） ============ */
+async function loadOptionsSentiment(ticker){
   try {
     const url = `https://query1.finance.yahoo.com/v7/finance/options/${encodeURIComponent(ticker)}`;
     const data = await fetchJson(url);
@@ -394,54 +464,35 @@ async function loadOptions(ticker){
     const pcRatio = callOI > 0 ? (putOI/callOI) : NaN;
     const avgIvCall = calls.length ? calls.reduce((s,c)=> s + (c.impliedVolatility?.raw||0),0)/calls.length : NaN;
     const avgIvPut = puts.length ? puts.reduce((s,c)=> s + (c.impliedVolatility?.raw||0),0)/puts.length : NaN;
-    const expDate = new Date((opt.expirationDate||0)*1000).toISOString().slice(0,10);
-
     let sentiment = 'flat', sentimentLabel = '中性籌碼';
     if(pcRatio > 1.0){ sentiment='down'; sentimentLabel='偏空籌碼（Put偏多）'; }
     else if(pcRatio < 0.7){ sentiment='up'; sentimentLabel='偏多籌碼（Call偏多）'; }
-
-    panel.innerHTML = `
-      <h2>選擇權市場情緒 <span class="note">最近到期日 ${expDate}</span></h2>
-      <div class="kv">
-        <div class="l">Put/Call 未平倉比</div><div class="v">${fmtNum(pcRatio,2)} <span class="badge ${sentiment}">${sentimentLabel}</span></div>
-        <div class="l">Call 平均隱含波動率</div><div class="v">${fmtPct(avgIvCall)}</div>
-        <div class="l">Put 平均隱含波動率</div><div class="v">${fmtPct(avgIvPut)}</div>
-        <div class="l">Call 未平倉量合計</div><div class="v">${fmtBig(callOI)}</div>
-        <div class="l">Put 未平倉量合計</div><div class="v">${fmtBig(putOI)}</div>
-      </div>
-      <div class="macro-date">僅取最近一個到期月份的鏈；比率與IV反映市場對短期波動的定價，非方向保證。</div>
-    `;
     return { pcRatio, avgIv: (avgIvCall + avgIvPut) / 2, sentiment, sentimentLabel };
   } catch(e){
-    panel.innerHTML = `<h2>選擇權市場情緒</h2><div class="empty">此代號無選擇權資料，或資料來源暫時無法取得（${e.message}）</div>`;
     return null;
   }
 }
 
-async function runQuery(){
-  const raw = document.getElementById('tickerInput').value.trim();
-  if(!raw){ setStatus('請輸入股票代號', 'err'); return; }
-  const ticker = raw.toUpperCase();
-  setStatus('查詢中…（三項資料同時抓取）');
-
-  const chartPromise = loadChart(ticker)
-    .then(res => { renderBasicQuote(res.meta, ticker); return res; })
-    .catch(e => {
-      document.getElementById('quotePanel').innerHTML = `<h2>基本面</h2><div class="empty">K線/報價資料取得失敗：${e.message}（可切換右上角代理再試）</div>`;
-      return null;
-    });
-  const optionsPromise = loadOptions(ticker).catch(() => null);
-  const fundPromise = loadExtraFundamentals(ticker).catch(() => null);
-
-  const [chartRes, optionsRes, fundRes] = await Promise.all([chartPromise, optionsPromise, fundPromise]);
-
-  renderStrategy(ticker, chartRes, fundRes, optionsRes);
-
-  const ok = !!chartRes;
-  if(ok){
-    setStatus('已更新：' + ticker + '（' + new Date().toLocaleString('zh-TW') + '）', 'ok');
-  } else {
-    setStatus('部分資料取得失敗，已顯示成功的部分（' + ticker + '）', 'err');
+/* ============ 近期相關新聞 ============ */
+async function loadNews(ticker, companyName){
+  const panel = document.getElementById('newsPanel');
+  try{
+    const q = encodeURIComponent(companyName ? `${ticker} ${companyName}` : (ticker + ' stock'));
+    const url = `https://news.google.com/rss/search?q=${q}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant`;
+    const xmlText = await fetchText(url, 12000);
+    const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+    const items = Array.from(doc.getElementsByTagName('item')).slice(0,6);
+    if(!items.length) throw new Error('查無新聞');
+    const rows = items.map(it => {
+      const title = it.getElementsByTagName('title')[0]?.textContent || '';
+      const link = it.getElementsByTagName('link')[0]?.textContent || '#';
+      const pub = it.getElementsByTagName('pubDate')[0]?.textContent || '';
+      const d = pub ? new Date(pub).toLocaleDateString('zh-TW') : '';
+      return `<div class="news-item"><a href="${link}" target="_blank" rel="noopener">${title}</a><span class="news-date">${d}</span></div>`;
+    }).join('');
+    panel.innerHTML = `<h2>近期相關新聞</h2>${rows}`;
+  }catch(e){
+    panel.innerHTML = `<h2>近期相關新聞</h2><div class="empty">新聞資料暫時無法取得（${e.message}）</div>`;
   }
 }
 
@@ -451,9 +502,9 @@ function computeMomentum(bars){
   const closes = bars.map(b => b.close);
   const n = closes.length;
   const last = closes[n-1];
-  const shortIdx = Math.max(0, n-21); // 約近1個月交易日
+  const shortIdx = Math.max(0, n-21);
   const shortAgo = closes[shortIdx];
-  const longAgo = closes[0]; // 約6個月前
+  const longAgo = closes[0];
   const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
   const ma20 = avg(closes.slice(Math.max(0, n-20)));
   const ma60 = avg(closes.slice(Math.max(0, n-60)));
@@ -466,6 +517,22 @@ function computeMomentum(bars){
   };
 }
 
+function computeSignalText(bars){
+  const mom = computeMomentum(bars);
+  if(!mom) return '資料不足，無法判讀近期訊號。';
+  const n = bars.length;
+  const recentBars = bars.slice(Math.max(0, n-14));
+  const highs = recentBars.map(b=>b.high);
+  const lows = recentBars.map(b=>b.low);
+  const lastClose = recentBars[recentBars.length-1].close;
+  const rangePct = (Math.max(...highs) - Math.min(...lows)) / lastClose;
+  const volLevel = rangePct > 0.15 ? '偏高' : (rangePct < 0.06 ? '偏低' : '中等');
+  const trendText = mom.aboveMa20 && mom.aboveMa60 ? '站上20日與60日均線，呈多頭排列'
+    : (!mom.aboveMa20 && !mom.aboveMa60 ? '跌破20日與60日均線，呈空頭排列'
+    : '介於20日與60日均線之間，短中期方向尚未明朗（盤整格局）');
+  return `近14個交易日高低區間振幅約 ${(rangePct*100).toFixed(1)}%，波動度${volLevel}；價格${trendText}。`;
+}
+
 function renderStrategy(ticker, chartRes, fund, opt){
   const panel = document.getElementById('strategyPanel');
   const mom = chartRes ? computeMomentum(chartRes.bars) : null;
@@ -475,8 +542,15 @@ function renderStrategy(ticker, chartRes, fund, opt){
     return;
   }
 
+  let score = 0, counted = 0;
+  if(mom){ score += (mom.aboveMa20?1:-1) + (mom.aboveMa60?1:-1) + (mom.shortChangePct>=0?1:-1); counted += 3; }
+  if(fund && fund.targetMean && mom){ score += (fund.targetMean > mom.last) ? 1 : -1; counted += 1; }
+  if(opt){ score += opt.sentiment==='up'?1:(opt.sentiment==='down'?-1:0); counted += 1; }
+  const overallLabel = counted===0 ? '資料不足' : (score>=2 ? '數據面偏多' : (score<=-2 ? '數據面偏空' : '數據面中性／訊號分歧'));
+
   const shortItems = [];
   const longItems = [];
+  const optItems = [];
 
   if(mom){
     const sDir = mom.shortChangePct >= 0 ? '走高' : '走低';
@@ -484,10 +558,6 @@ function renderStrategy(ticker, chartRes, fund, opt){
   }
   if(opt && !isNaN(opt.pcRatio)){
     shortItems.push(`選擇權籌碼：Put/Call未平倉比 ${fmtNum(opt.pcRatio,2)}（${opt.sentimentLabel}）`);
-  }
-  if(opt && !isNaN(opt.avgIv)){
-    const ivLevel = opt.avgIv > 0.5 ? '偏高，市場預期波動較大' : (opt.avgIv < 0.25 ? '偏低，市場預期波動較平靜' : '中等');
-    shortItems.push(`平均隱含波動率約 ${fmtPct(opt.avgIv)}，屬於${ivLevel}（經驗判斷：>50%偏高、25–50%中等、<25%偏低）`);
   }
   if(!shortItems.length) shortItems.push('短線資料不足，暫無法整理');
 
@@ -505,8 +575,28 @@ function renderStrategy(ticker, chartRes, fund, opt){
   }
   if(!longItems.length) longItems.push('長線資料不足，暫無法整理');
 
+  if(opt){
+    if(opt.sentiment === 'up'){
+      optItems.push('籌碼面偏多（Call未平倉較多）：市場上常見對應方向包括賣出現金擔保賣權尋找較低價位進場，或用掩護性買權為現有部位增加收益，邏輯是偏多氛圍下收取時間價值較有利');
+    } else if(opt.sentiment === 'down'){
+      optItems.push('籌碼面偏空（Put未平倉較多）：市場上常見對應方向包括保護性賣權避險，或用垂直價差控制下檔風險，邏輯是偏空氛圍下優先限制損失而非單邊做空');
+    } else {
+      optItems.push('籌碼面中性：市場上常見對應方向包括勒式價差或鐵蝶式等區間策略，邏輯是方向不明時透過賣出兩側權利金賺取盤整收益');
+    }
+    if(!isNaN(opt.avgIv)){
+      if(opt.avgIv > 0.5){
+        optItems.push(`隱含波動率偏高（約${fmtPct(opt.avgIv)}）：權利金相對昂貴，賣方策略（掩護性買權、現金擔保賣權、鐵蝶式）通常較有利；買方策略成本較高`);
+      } else if(opt.avgIv < 0.25){
+        optItems.push(`隱含波動率偏低（約${fmtPct(opt.avgIv)}）：權利金相對便宜，若預期後續有較大變動，直接買進買權／賣權的成本效益可能較好`);
+      }
+    }
+  } else {
+    optItems.push('選擇權籌碼資料暫時無法取得，無法整理對應策略方向');
+  }
+
   panel.innerHTML = `
     <h2>短線／長線觀察摘要 <span class="note">資料判讀框架，非投資建議</span></h2>
+    <div class="signal-box"><strong>整體數據面判讀：${overallLabel}</strong>　根據上述動能、估值、籌碼面共 ${counted} 項指標做機械式加總，僅供參考，非個人化投資建議</div>
     <div class="strategy-block">
       <div class="label">短線觀察（約1個月內）</div>
       <ul>${shortItems.map(t => `<li>${t}</li>`).join('')}</ul>
@@ -515,12 +605,125 @@ function renderStrategy(ticker, chartRes, fund, opt){
       <div class="label">長線觀察（約6個月以上）</div>
       <ul>${longItems.map(t => `<li>${t}</li>`).join('')}</ul>
     </div>
-    <div class="strategy-note">以上是把已經抓到的價格動能、估值與選擇權籌碼數字轉成文字描述，幫助你更快讀懂現況——不是「買/賣」的操作指令。實際部位大小、進出場時機，取決於你自己的風險承受度與資金配置。</div>
+    <div class="strategy-block">
+      <div class="label">選擇權策略方向（依籌碼面推導，非操作建議）</div>
+      <ul>${optItems.map(t => `<li>${t}</li>`).join('')}</ul>
+    </div>
+    <div class="strategy-note">以上是把已抓到的價格動能、估值、選擇權籌碼數字轉成文字描述，幫助你更快讀懂現況——不是「買／賣」的操作指令。實際部位大小、進出場時機，取決於你自己的風險承受度與資金配置。</div>
   `;
+}
+
+/* ============ 主查詢流程（三項資料平行抓取） ============ */
+async function runQuery(){
+  const raw = document.getElementById('tickerInput').value.trim();
+  if(!raw){ setStatus('請輸入股票代號', 'err'); return; }
+  const ticker = raw.toUpperCase();
+  setStatus('查詢中…（多項資料同時抓取）');
+
+  const chartPromise = loadChart(ticker)
+    .then(res => {
+      renderBasicQuote(res.meta, ticker);
+      document.getElementById('klineSignal').innerHTML = '<strong>近期訊號判讀：</strong>' + computeSignalText(res.bars);
+      loadNews(ticker, res.meta.longName || res.meta.shortName);
+      return res;
+    })
+    .catch(e => {
+      document.getElementById('quotePanel').innerHTML = `<h2>基本面</h2><div class="empty">K線/報價資料取得失敗：${e.message}（可切換右上角代理再試）</div>`;
+      document.getElementById('klineSignal').textContent = '無法判讀（資料取得失敗）';
+      loadNews(ticker, null);
+      return null;
+    });
+
+  const optionsPromise = loadOptionsSentiment(ticker);
+  const fundPromise = loadExtraFundamentals(ticker);
+
+  const [chartRes, optionsRes, fundRes] = await Promise.all([chartPromise, optionsPromise, fundPromise]);
+
+  renderStrategy(ticker, chartRes, fundRes, optionsRes);
+
+  const ok = !!chartRes;
+  if(ok){
+    setStatus('已更新：' + ticker + '（' + new Date().toLocaleString('zh-TW') + '）', 'ok');
+  } else {
+    setStatus('部分資料取得失敗，已顯示成功的部分（' + ticker + '）', 'err');
+  }
 }
 
 document.getElementById('goBtn').addEventListener('click', runQuery);
 document.getElementById('tickerInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') runQuery(); });
+
+/* ============ 大戶籌碼：13F 持股佔比（即時向SEC調取，獨立於主查詢） ============ */
+async function loadWhale13F(){
+  const key = document.getElementById('whaleSelect').value;
+  const info = FUND_MANAGERS[key];
+  const area = document.getElementById('whalePieArea');
+  area.innerHTML = '<div class="empty">載入中…（大型13F檔案，可能需要10-20秒）</div>';
+  try{
+    const padded = info.cik.padStart(10,'0');
+    const subs = await fetchJson(`https://data.sec.gov/submissions/CIK${padded}.json`, 15000);
+    const recent = subs.filings.recent;
+    let idx = -1;
+    for(let i=0;i<recent.form.length;i++){ if(recent.form[i] === '13F-HR'){ idx=i; break; } }
+    if(idx === -1) throw new Error('查無13F-HR申報紀錄');
+    const accession = recent.accessionNumber[idx];
+    const filingDate = recent.filingDate[idx];
+    const periodOfReport = (recent.reportDate && recent.reportDate[idx]) || filingDate;
+    const accessionNoDashes = accession.replace(/-/g,'');
+    const cikNum = String(Number(info.cik));
+    const idxJson = await fetchJson(`https://www.sec.gov/Archives/edgar/data/${cikNum}/${accessionNoDashes}/index.json`, 15000);
+    const items = (idxJson && idxJson.directory && idxJson.directory.item) || [];
+    let xmlName = null;
+    for(const it of items){
+      const nm = (it.name||'').toLowerCase();
+      if(nm.endsWith('.xml') && nm !== 'primary_doc.xml'){
+        xmlName = it.name;
+        if(nm.includes('infotable')) break;
+      }
+    }
+    if(!xmlName) throw new Error('找不到持股明細檔案');
+    const xmlText = await fetchText(`https://www.sec.gov/Archives/edgar/data/${cikNum}/${accessionNoDashes}/${xmlName}`, 25000);
+    const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+    const nodes = doc.getElementsByTagName('infoTable');
+    if(!nodes.length) throw new Error('持股明細解析失敗');
+    const map = {};
+    for(let i=0;i<nodes.length;i++){
+      const n = nodes[i];
+      const name = n.getElementsByTagName('nameOfIssuer')[0]?.textContent || '未知';
+      const value = parseFloat(n.getElementsByTagName('value')[0]?.textContent || '0');
+      map[name] = (map[name]||0) + value;
+    }
+    let arr = Object.entries(map).map(([name,value])=>({name,value}));
+    arr.sort((a,b)=>b.value-a.value);
+    const total = arr.reduce((s,x)=>s+x.value,0);
+    const top = arr.slice(0,8);
+    const restValue = total - top.reduce((s,x)=>s+x.value,0);
+    if(restValue > 0.0001*total) top.push({name:'其他持股', value: restValue});
+    renderPie(area, top, total, info.name, periodOfReport);
+  }catch(e){
+    area.innerHTML = `<div class="empty">取得失敗：${e.message}（SEC大型檔案透過免費代理抓取有時會逾時，可再試一次或稍後重試，或切換右上角代理）</div>`;
+  }
+}
+function renderPie(area, items, total, name, periodOfReport){
+  const colors = ['#A9761F','#1E8E5A','#C6392C','#2B6CB0','#7E5BC0','#B8860B','#4A7A8C','#946B45','#6B7680'];
+  let acc = 0;
+  const stops = items.map((it,i)=>{
+    const pct = it.value/total*100;
+    const start = acc; acc += pct;
+    return `${colors[i%colors.length]} ${start}% ${acc}%`;
+  }).join(', ');
+  const legend = items.map((it,i)=>{
+    const pct = (it.value/total*100).toFixed(1);
+    return `<div class="pie-legend-item"><span class="pie-swatch" style="background:${colors[i%colors.length]}"></span>${it.name}（${pct}%）</div>`;
+  }).join('');
+  area.innerHTML = `
+    <div class="macro-date">${name} · 申報期別 ${periodOfReport || '—'}（13F每季揭露，延遲可達45天，屬靜態快照）</div>
+    <div class="pie-wrap">
+      <div class="pie-chart" style="background: conic-gradient(${stops});"></div>
+      <div class="pie-legend">${legend}</div>
+    </div>
+  `;
+}
+document.getElementById('whaleLoadBtn').addEventListener('click', loadWhale13F);
 </script>
 </body>
 </html>
