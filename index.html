@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>股票研究終端</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  @font-face {
+    font-family: 'IBM Plex Mono';
+    src: local('IBM Plex Mono');
+  }
+  :root{
+    --bg:#0F1417;
+    --panel:#161D22;
+    --panel-2:#12181C;
+    --line:#2A343D;
+    --text:#E8EDF1;
+    --muted:#8B98A5;
+    --up:#4FBF8B;
+    --down:#E2604F;
+    --gold:#D6A34D;
+    --mono: 'IBM Plex Mono', 'Consolas', monospace;
+    --sans: 'IBM Plex Sans', 'Noto Sans TC', -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--sans); }
+  body{ padding: 24px 16px 60px; }
+  .wrap{ max-width: 1120px; margin: 0 auto; }
+
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 18px;
+    flex-wrap: wrap; gap: 10px;
+  }
+  header.top h1{
+    font-family: var(--mono); font-size: 18px; font-weight: 600; letter-spacing: 0.5px; margin:0;
+    color: var(--text);
+  }
+  header.top .sub{ font-size:12px; color:var(--muted); font-family: var(--mono); }
+
+  .search-row{ display:flex; gap:8px; margin-bottom: 22px; flex-wrap: wrap; }
+  .search-row input[type=text]{
+    flex:1; min-width:180px; background: var(--panel); border:1px solid var(--line); color:var(--text);
+    font-family: var(--mono); font-size:16px; padding: 12px 14px; border-radius:3px; outline:none;
+  }
+  .search-row input[type=text]:focus{ border-color: var(--gold); }
+  .search-row button{
+    background: var(--gold); color:#1a1305; border:none; font-family: var(--sans); font-weight:600;
+    font-size:14px; padding: 0 22px; border-radius:3px; cursor:pointer;
+  }
+  .search-row button:hover{ filter: brightness(1.08); }
+  .search-row select{
+    background: var(--panel); border:1px solid var(--line); color:var(--muted); font-family: var(--mono);
+    font-size:12px; border-radius:3px; padding: 0 8px;
+  }
+  #status{ font-size:12px; color:var(--muted); font-family: var(--mono); margin: -12px 0 18px; min-height: 16px; }
+  #status.err{ color: var(--down); }
+  #status.ok{ color: var(--up); }
+
+  .grid{ display:grid; grid-template-columns: 1.4fr 1fr; gap: 16px; align-items:start; }
+  @media (max-width: 860px){ .grid{ grid-template-columns: 1fr; } }
+
+  .panel{
+    background: var(--panel); border:1px solid var(--line); border-radius:3px; padding: 16px 18px; margin-bottom:16px;
+  }
+  .panel h2{
+    font-size: 13px; font-weight:600; margin: 0 0 12px; color: var(--gold); letter-spacing: 0.3px;
+    border-bottom: 1px solid var(--line); padding-bottom: 8px;
+  }
+  .panel h2 .note{ color: var(--muted); font-weight:400; font-size:11px; font-family: var(--mono); float:right; }
+
+  .kv{ display:grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-family: var(--mono); font-size: 13px; }
+  .kv .l{ color: var(--muted); }
+  .kv .v{ text-align:right; }
+  .quote-price{ font-family: var(--mono); font-size: 34px; font-weight:600; line-height:1; margin: 2px 0 4px; }
+  .quote-change{ font-family: var(--mono); font-size:14px; }
+  .quote-change.up{ color:var(--up); }
+  .quote-change.down{ color:var(--down); }
+
+  #chart{ height: 320px; }
+
+  table{ width:100%; border-collapse: collapse; font-size: 12.5px; }
+  table th{ text-align:left; color:var(--muted); font-weight:500; font-size:11px; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  table td{ padding: 6px 6px; border-bottom: 1px solid #1c242b; font-family: var(--mono); }
+  table tr:last-child td{ border-bottom:none; }
+  a{ color: var(--gold); text-decoration:none; }
+  a:hover{ text-decoration: underline; }
+
+  .badge{ display:inline-block; padding: 1px 7px; border-radius: 10px; font-size:11px; font-family: var(--mono); }
+  .badge.up{ background: rgba(79,191,139,0.15); color: var(--up); }
+  .badge.down{ background: rgba(226,96,79,0.15); color: var(--down); }
+  .badge.flat{ background: rgba(139,152,165,0.15); color: var(--muted); }
+
+  .macro-date, .whale-date{ font-size:11px; color:var(--muted); font-family: var(--mono); margin-top:6px; }
+  .empty{ color:var(--muted); font-size:13px; padding: 20px 0; text-align:center; }
+  .subhead{ font-size:12px; color:var(--muted); margin: 14px 0 6px; font-family: var(--mono); }
+  .disclaimer{ font-size:11.5px; color:var(--muted); line-height:1.6; border-top:1px solid var(--line); margin-top: 26px; padding-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>股票研究終端</h1>
+    <span class="sub">基本面 · K線 · 選擇權情緒 · 總經 · 大戶籌碼</span>
+  </header>
+
+  <div class="search-row">
+    <input type="text" id="tickerInput" placeholder="輸入代號，例如 AAPL、TSLA、2330.TW" value="">
+    <select id="proxySel" title="CORS代理（若查無資料可切換）">
+      <option value="https://api.allorigins.win/raw?url=">代理: allorigins</option>
+      <option value="https://corsproxy.io/?url=">代理: corsproxy</option>
+    </select>
+    <button id="goBtn">查詢</button>
+  </div>
+  <div id="status"></div>
+
+  <div class="grid">
+    <div class="col-main">
+      <div class="panel" id="quotePanel">
+        <h2>基本面</h2>
+        <div class="empty">輸入代號後查詢</div>
+      </div>
+      <div class="panel">
+        <h2>K線走勢（近6個月，日線）</h2>
+        <div id="chart"></div>
+      </div>
+      <div class="panel" id="optionsPanel">
+        <h2>選擇權市場情緒</h2>
+        <div class="empty">查詢後顯示 Put/Call Ratio 與隱含波動率</div>
+      </div>
+    </div>
+
+    <div class="col-side">
+      <div class="panel">
+        <h2>總體經濟現況 <span class="note">手動維護快照</span></h2>
+        <div class="kv" id="macroKv"></div>
+        <div class="macro-date" id="macroDate"></div>
+      </div>
+
+      <div class="panel">
+        <h2>大戶籌碼參考 <span class="note">申報延遲，非即時</span></h2>
+        <div class="subhead">政治人物（STOCK Act 揭露，通常延遲30–45天）</div>
+        <table>
+          <thead><tr><th>人物</th><th>說明</th><th>來源</th></tr></thead>
+          <tbody id="politicianTbl"></tbody>
+        </table>
+        <div class="subhead">知名基金經理人（13F，每季揭露，延遲可達45天）</div>
+        <table>
+          <thead><tr><th>人物 / 機構</th><th>說明</th><th>來源</th></tr></thead>
+          <tbody id="whaleTbl"></tbody>
+        </table>
+        <div class="whale-date">開啟來源連結後，於頁面內搜尋你查詢的代號，確認是否為其持股之一。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    本工具僅整合公開資料以輔助研究，不構成投資建議。K線與基本面資料經由免費、非官方的資料端點取得，可能延遲、缺漏或因來源政策調整而失效；總經數字與大戶持股為人工維護的參考快照，需自行核對最新申報。選擇權情緒指標（IV、Put/Call Ratio）反映的是市場籌碼與預期，不是方向保證。所有交易決策請自行判斷並承擔風險。
+  </div>
+
+</div>
+
+<script>
+/* ============ 手動維護區：總經快照（自行更新） ============ */
+const MACRO_SNAPSHOT = {
+  asOf: "2026-07-29（FOMC）／CPI預估至2026 Q2",
+  rows: [
+    ["聯邦基金利率目標區間", "3.50% – 3.75%"],
+    ["失業率", "4.2%"],
+    ["CPI（年增，預估）", "約 6.0%（受中東情勢推升能源價格影響）"],
+    ["核心CPI（年增，預估）", "約 3.2%"],
+    ["下次FOMC會議", "2026-09-15 ~ 09-16"],
+  ]
+};
+
+/* ============ 手動維護區：大戶籌碼參考連結 ============ */
+const POLITICIANS = [
+  ["Nancy Pelosi", "前眾議院議長，交易多由配偶執行，2027年將退休、屆時停止揭露", "https://www.capitoltrades.com/politicians/P000197"],
+  ["Donald Trump", "現任總統，個人資產以OGE年度財產申報揭露，頻率遠低於國會議員、顆粒度也較粗", "https://www.capitoltrades.com/politicians"],
+];
+const WHALES = [
+  ["Warren Buffett（Berkshire Hathaway）", "價值投資代表，持股集中、換手率低", "https://whalewisdom.com/filer/berkshire-hathaway-inc"],
+  ["Michael Burry（Scion Asset Management）", "以逆向、事件驅動聞名，持股集中度高、常見選擇權部位", "https://whalewisdom.com/filer/scion-asset-management-llc"],
+  ["Ray Dalio（Bridgewater Associates）", "全天候/風險平價策略創始人，宏觀對沖視角", "https://whalewisdom.com/filer/bridgewater-associates-inc"],
+  ["Cathie Wood（ARK Invest）", "高成長顛覆性創新主題，波動大、集中度高", "https://whalewisdom.com/filer/ark-investment-management-llc"],
+  ["Bill Gates（Gates Foundation Trust）", "長期持有型，捐贈基金屬性、換手率極低", "https://whalewisdom.com/search?s=Bill+%26+Melinda+Gates+Foundation+Trust"],
+];
+
+function renderMacro(){
+  document.getElementById('macroKv').innerHTML = MACRO_SNAPSHOT.rows.map(r =>
+    `<div class="l">${r[0]}</div><div class="v">${r[1]}</div>`
+  ).join('');
+  document.getElementById('macroDate').textContent = "資料快照日期：" + MACRO_SNAPSHOT.asOf;
+}
+function renderWhaleTables(){
+  document.getElementById('politicianTbl').innerHTML = POLITICIANS.map(p =>
+    `<tr><td>${p[0]}</td><td>${p[1]}</td><td><a href="${p[2]}" target="_blank" rel="noopener">查看</a></td></tr>`
+  ).join('');
+  document.getElementById('whaleTbl').innerHTML = WHALES.map(p =>
+    `<tr><td>${p[0]}</td><td>${p[1]}</td><td><a href="${p[2]}" target="_blank" rel="noopener">查看</a></td></tr>`
+  ).join('');
+}
+renderMacro();
+renderWhaleTables();
+
+/* ============ 圖表初始化 ============ */
+let chart, series;
+function initChart(){
+  const el = document.getElementById('chart');
+  el.innerHTML = '';
+  chart = LightweightCharts.createChart(el, {
+    width: el.clientWidth, height: 320,
+    layout: { background: { color: 'transparent' }, textColor: '#8B98A5', fontFamily: 'IBM Plex Mono, monospace', fontSize: 11 },
+    grid: { vertLines: { color: '#1c242b' }, horzLines: { color: '#1c242b' } },
+    rightPriceScale: { borderColor: '#2A343D' },
+    timeScale: { borderColor: '#2A343D' },
+    crosshair: { mode: 0 },
+  });
+  series = chart.addCandlestickSeries({
+    upColor: '#4FBF8B', downColor: '#E2604F', borderVisible: false,
+    wickUpColor: '#4FBF8B', wickDownColor: '#E2604F',
+  });
+  window.addEventListener('resize', () => { if(chart) chart.applyOptions({ width: el.clientWidth }); });
+}
+initChart();
+
+/* ============ 資料抓取 ============ */
+function setStatus(msg, cls){
+  const s = document.getElementById('status');
+  s.textContent = msg || '';
+  s.className = cls || '';
+}
+function proxied(url){
+  const base = document.getElementById('proxySel').value;
+  return base + encodeURIComponent(url);
+}
+async function fetchJson(url){
+  const res = await fetch(proxied(url));
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+function fmtNum(n, d=2){
+  if(n === undefined || n === null || isNaN(n)) return '—';
+  return Number(n).toLocaleString('en-US', {maximumFractionDigits:d, minimumFractionDigits:0});
+}
+function fmtPct(n, d=2){
+  if(n === undefined || n === null || isNaN(n)) return '—';
+  return (n*100).toFixed(d) + '%';
+}
+function fmtBig(n){
+  if(n === undefined || n === null || isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  if(abs >= 1e12) return (n/1e12).toFixed(2) + 'T';
+  if(abs >= 1e9) return (n/1e9).toFixed(2) + 'B';
+  if(abs >= 1e6) return (n/1e6).toFixed(2) + 'M';
+  return fmtNum(n);
+}
+
+async function loadQuoteAndFundamentals(ticker){
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=price,summaryDetail,defaultKeyStatistics,financialData`;
+  const data = await fetchJson(url);
+  const r = data?.quoteSummary?.result?.[0];
+  if(!r) throw new Error('查無此代號的基本面資料');
+  const price = r.price || {};
+  const sd = r.summaryDetail || {};
+  const ks = r.defaultKeyStatistics || {};
+  const fd = r.financialData || {};
+
+  const cur = price.regularMarketPrice?.raw;
+  const chg = price.regularMarketChange?.raw;
+  const chgPct = price.regularMarketChangePercent?.raw;
+  const isUp = (chg ?? 0) >= 0;
+
+  const panel = document.getElementById('quotePanel');
+  panel.innerHTML = `
+    <h2>基本面 <span class="note">${price.longName || ticker} · ${price.exchangeName || ''}</span></h2>
+    <div class="quote-price">${fmtNum(cur)}</div>
+    <div class="quote-change ${isUp ? 'up':'down'}">${isUp?'+':''}${fmtNum(chg)}（${isUp?'+':''}${fmtNum(chgPct*100)}%）</div>
+    <div class="kv" style="margin-top:14px;">
+      <div class="l">市值</div><div class="v">${fmtBig(price.marketCap?.raw)}</div>
+      <div class="l">本益比 (TTM)</div><div class="v">${fmtNum(sd.trailingPE?.raw)}</div>
+      <div class="l">預估本益比</div><div class="v">${fmtNum(sd.forwardPE?.raw)}</div>
+      <div class="l">EPS (TTM)</div><div class="v">${fmtNum(ks.trailingEps?.raw)}</div>
+      <div class="l">股價淨值比</div><div class="v">${fmtNum(ks.priceToBook?.raw)}</div>
+      <div class="l">52週高/低</div><div class="v">${fmtNum(sd.fiftyTwoWeekHigh?.raw)} / ${fmtNum(sd.fiftyTwoWeekLow?.raw)}</div>
+      <div class="l">殖利率</div><div class="v">${fmtPct(sd.dividendYield?.raw)}</div>
+      <div class="l">Beta</div><div class="v">${fmtNum(sd.beta?.raw)}</div>
+      <div class="l">營收成長 (YoY)</div><div class="v">${fmtPct(fd.revenueGrowth?.raw)}</div>
+      <div class="l">毛利率</div><div class="v">${fmtPct(fd.grossMargins?.raw)}</div>
+      <div class="l">分析師目標價</div><div class="v">${fmtNum(fd.targetMeanPrice?.raw)}</div>
+      <div class="l">分析師建議</div><div class="v">${fd.recommendationKey || '—'}</div>
+    </div>
+  `;
+}
+
+async function loadChart(ticker){
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=6mo&interval=1d`;
+  const data = await fetchJson(url);
+  const res = data?.chart?.result?.[0];
+  if(!res) throw new Error('查無K線資料');
+  const ts = res.timestamp || [];
+  const q = res.indicators.quote[0];
+  const bars = ts.map((t,i) => ({
+    time: t,
+    open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i]
+  })).filter(b => b.open != null && b.close != null);
+  initChart();
+  series.setData(bars);
+  chart.timeScale().fitContent();
+}
+
+async function loadOptions(ticker){
+  const panel = document.getElementById('optionsPanel');
+  try {
+    const url = `https://query1.finance.yahoo.com/v7/finance/options/${encodeURIComponent(ticker)}`;
+    const data = await fetchJson(url);
+    const res = data?.optionChain?.result?.[0];
+    if(!res || !res.options || !res.options[0]){ throw new Error('查無選擇權鏈'); }
+    const opt = res.options[0];
+    const calls = opt.calls || [], puts = opt.puts || [];
+    const callOI = calls.reduce((s,c)=> s + (c.openInterest?.raw||0), 0);
+    const putOI = puts.reduce((s,c)=> s + (c.openInterest?.raw||0), 0);
+    const pcRatio = callOI > 0 ? (putOI/callOI) : NaN;
+    const avgIvCall = calls.length ? calls.reduce((s,c)=> s + (c.impliedVolatility?.raw||0),0)/calls.length : NaN;
+    const avgIvPut = puts.length ? puts.reduce((s,c)=> s + (c.impliedVolatility?.raw||0),0)/puts.length : NaN;
+    const expDate = new Date((opt.expirationDate||0)*1000).toISOString().slice(0,10);
+
+    let sentiment = 'flat', sentimentLabel = '中性籌碼';
+    if(pcRatio > 1.0){ sentiment='down'; sentimentLabel='偏空籌碼（Put偏多）'; }
+    else if(pcRatio < 0.7){ sentiment='up'; sentimentLabel='偏多籌碼（Call偏多）'; }
+
+    panel.innerHTML = `
+      <h2>選擇權市場情緒 <span class="note">最近到期日 ${expDate}</span></h2>
+      <div class="kv">
+        <div class="l">Put/Call 未平倉比</div><div class="v">${fmtNum(pcRatio,2)} <span class="badge ${sentiment}">${sentimentLabel}</span></div>
+        <div class="l">Call 平均隱含波動率</div><div class="v">${fmtPct(avgIvCall)}</div>
+        <div class="l">Put 平均隱含波動率</div><div class="v">${fmtPct(avgIvPut)}</div>
+        <div class="l">Call 未平倉量合計</div><div class="v">${fmtBig(callOI)}</div>
+        <div class="l">Put 未平倉量合計</div><div class="v">${fmtBig(putOI)}</div>
+      </div>
+      <div class="macro-date">僅取最近一個到期月份的鏈；比率與IV反映市場對短期波動的定價，非方向保證。</div>
+    `;
+  } catch(e){
+    panel.innerHTML = `<h2>選擇權市場情緒</h2><div class="empty">此代號無選擇權資料，或資料來源暫時無法取得（${e.message}）</div>`;
+  }
+}
+
+async function runQuery(){
+  const raw = document.getElementById('tickerInput').value.trim();
+  if(!raw){ setStatus('請輸入股票代號', 'err'); return; }
+  const ticker = raw.toUpperCase();
+  setStatus('查詢中…');
+  try {
+    await loadQuoteAndFundamentals(ticker);
+    await loadChart(ticker);
+    await loadOptions(ticker);
+    setStatus('已更新：' + ticker + '（' + new Date().toLocaleString('zh-TW') + '）', 'ok');
+  } catch(e){
+    setStatus('查詢失敗：' + e.message + '（可切換右上角代理再試一次，或稍後重試）', 'err');
+  }
+}
+
+document.getElementById('goBtn').addEventListener('click', runQuery);
+document.getElementById('tickerInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') runQuery(); });
+</script>
+</body>
+</html>
