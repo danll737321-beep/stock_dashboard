@@ -97,6 +97,21 @@
   .empty{ color:var(--muted); font-size:13px; padding: 20px 0; text-align:center; }
   .subhead{ font-size:12px; color:var(--muted); margin: 14px 0 6px; font-family: var(--mono); }
   .disclaimer{ font-size:11.5px; color:var(--muted); line-height:1.6; border-top:1px solid var(--line); margin-top: 26px; padding-top:14px; }
+
+  .tab-btns{ display:flex; gap:8px; margin-bottom:14px; }
+  .tab-btn{
+    padding:6px 14px; border:1px solid var(--line); background:var(--panel-2); border-radius:3px;
+    cursor:pointer; font-family:var(--mono); font-size:12px; color:var(--muted);
+  }
+  .tab-btn.active{ background:var(--gold); color:#1a1305; border-color:var(--gold); font-weight:600; }
+  .tab-content{ display:none; }
+  .tab-content.active{ display:block; }
+
+  .strategy-block{ margin-bottom: 14px; }
+  .strategy-block .label{ font-family: var(--mono); font-size:11px; color:var(--gold); margin-bottom:6px; letter-spacing:0.3px; }
+  .strategy-block ul{ margin:0; padding-left:18px; font-size:13px; line-height:1.7; }
+  .strategy-block li{ margin-bottom: 4px; }
+  .strategy-note{ font-size:11px; color:var(--muted); margin-top:10px; border-top:1px solid var(--line); padding-top:10px; }
 </style>
 </head>
 <body>
@@ -104,7 +119,7 @@
 
   <header class="top">
     <h1>股票研究終端</h1>
-    <span class="sub">基本面 · K線 · 選擇權情緒 · 總經 · 大戶籌碼</span>
+    <span class="sub">基本面 · K線 · 策略摘要 · 選擇權情緒 · 總經 · 大戶籌碼</span>
   </header>
 
   <div class="search-row">
@@ -127,6 +142,10 @@
         <h2>K線走勢（近6個月，日線）</h2>
         <div id="chart"></div>
       </div>
+      <div class="panel" id="strategyPanel">
+        <h2>短線／長線觀察摘要</h2>
+        <div class="empty">查詢後根據價格動能、估值與選擇權籌碼自動整理</div>
+      </div>
       <div class="panel" id="optionsPanel">
         <h2>選擇權市場情緒</h2>
         <div class="empty">查詢後顯示 Put/Call Ratio 與隱含波動率</div>
@@ -135,24 +154,31 @@
 
     <div class="col-side">
       <div class="panel">
-        <h2>總體經濟現況 <span class="note">手動維護快照</span></h2>
-        <div class="kv" id="macroKv"></div>
-        <div class="macro-date" id="macroDate"></div>
-      </div>
+        <div class="tab-btns">
+          <button class="tab-btn active" data-tab="macroTab">總經</button>
+          <button class="tab-btn" data-tab="whaleTab">大戶籌碼</button>
+        </div>
 
-      <div class="panel">
-        <h2>大戶籌碼參考 <span class="note">申報延遲，非即時</span></h2>
-        <div class="subhead">政治人物（STOCK Act 揭露，通常延遲30–45天）</div>
-        <table>
-          <thead><tr><th>人物</th><th>說明</th><th>來源</th></tr></thead>
-          <tbody id="politicianTbl"></tbody>
-        </table>
-        <div class="subhead">知名基金經理人（13F，每季揭露，延遲可達45天）</div>
-        <table>
-          <thead><tr><th>人物 / 機構</th><th>說明</th><th>來源</th></tr></thead>
-          <tbody id="whaleTbl"></tbody>
-        </table>
-        <div class="whale-date">開啟來源連結後，於頁面內搜尋你查詢的代號，確認是否為其持股之一。</div>
+        <div class="tab-content active" id="macroTab">
+          <h2>總體經濟現況 <span class="note">手動維護快照</span></h2>
+          <div class="kv" id="macroKv"></div>
+          <div class="macro-date" id="macroDate"></div>
+        </div>
+
+        <div class="tab-content" id="whaleTab">
+          <h2>大戶籌碼參考 <span class="note">申報延遲，非即時</span></h2>
+          <div class="subhead">政治人物（STOCK Act 揭露，通常延遲30–45天）</div>
+          <table>
+            <thead><tr><th>人物</th><th>說明</th><th>來源</th></tr></thead>
+            <tbody id="politicianTbl"></tbody>
+          </table>
+          <div class="subhead">知名基金經理人（13F，每季揭露，延遲可達45天）</div>
+          <table>
+            <thead><tr><th>人物 / 機構</th><th>說明</th><th>來源</th></tr></thead>
+            <tbody id="whaleTbl"></tbody>
+          </table>
+          <div class="whale-date">開啟來源連結後，於頁面內搜尋你查詢的代號，確認是否為其持股之一。</div>
+        </div>
       </div>
     </div>
   </div>
@@ -206,6 +232,16 @@ function renderWhaleTables(){
 renderMacro();
 renderWhaleTables();
 
+/* ============ 側欄分頁切換 ============ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
 /* ============ 圖表初始化 ============ */
 let chart, series;
 function initChart(){
@@ -237,10 +273,16 @@ function proxied(url){
   const base = document.getElementById('proxySel').value;
   return base + encodeURIComponent(url);
 }
-async function fetchJson(url){
-  const res = await fetch(proxied(url));
-  if(!res.ok) throw new Error('HTTP ' + res.status);
-  return res.json();
+async function fetchJson(url, timeoutMs=10000){
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try{
+    const res = await fetch(proxied(url), { signal: ctrl.signal });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } finally {
+    clearTimeout(t);
+  }
 }
 function fmtNum(n, d=2){
   if(n === undefined || n === null || isNaN(n)) return '—';
@@ -274,7 +316,7 @@ async function loadChart(ticker){
   initChart();
   series.setData(bars);
   chart.timeScale().fitContent();
-  return res.meta || {};
+  return { meta: res.meta || {}, bars };
 }
 
 // 基本面：先用chart meta（穩定、不需crumb）打底顯示，quoteSummary（完整財務指標）另外嘗試、失敗不影響已顯示內容
@@ -325,9 +367,16 @@ async function loadExtraFundamentals(ticker){
     const r = data?.quoteSummary?.result?.[0];
     if(!r) throw new Error('無資料');
     renderExtraFundamentals(r);
+    return {
+      forwardPE: r.summaryDetail?.forwardPE?.raw,
+      trailingPE: r.summaryDetail?.trailingPE?.raw,
+      targetMean: r.financialData?.targetMeanPrice?.raw,
+      recommendationKey: r.financialData?.recommendationKey,
+    };
   }catch(e){
     const el = document.getElementById('extraFundamentals');
     if(el) el.innerHTML = `<div class="l" style="grid-column:1/3;color:var(--muted);font-size:11px;">完整財務指標暫時無法取得（Yahoo端點需要驗證，非代理問題），已顯示的即時報價不受影響</div>`;
+    return null;
   }
 }
 
@@ -362,8 +411,10 @@ async function loadOptions(ticker){
       </div>
       <div class="macro-date">僅取最近一個到期月份的鏈；比率與IV反映市場對短期波動的定價，非方向保證。</div>
     `;
+    return { pcRatio, avgIv: (avgIvCall + avgIvPut) / 2, sentiment, sentimentLabel };
   } catch(e){
     panel.innerHTML = `<h2>選擇權市場情緒</h2><div class="empty">此代號無選擇權資料，或資料來源暫時無法取得（${e.message}）</div>`;
+    return null;
   }
 }
 
@@ -371,32 +422,101 @@ async function runQuery(){
   const raw = document.getElementById('tickerInput').value.trim();
   if(!raw){ setStatus('請輸入股票代號', 'err'); return; }
   const ticker = raw.toUpperCase();
-  setStatus('查詢中…');
+  setStatus('查詢中…（三項資料同時抓取）');
 
-  let ok = true;
-  let meta = null;
-  try {
-    meta = await loadChart(ticker);
-    renderBasicQuote(meta, ticker);
-  } catch(e){
-    ok = false;
-    document.getElementById('quotePanel').innerHTML = `<h2>基本面</h2><div class="empty">K線/報價資料取得失敗：${e.message}（可切換右上角代理再試）</div>`;
-  }
+  const chartPromise = loadChart(ticker)
+    .then(res => { renderBasicQuote(res.meta, ticker); return res; })
+    .catch(e => {
+      document.getElementById('quotePanel').innerHTML = `<h2>基本面</h2><div class="empty">K線/報價資料取得失敗：${e.message}（可切換右上角代理再試）</div>`;
+      return null;
+    });
+  const optionsPromise = loadOptions(ticker).catch(() => null);
+  const fundPromise = loadExtraFundamentals(ticker).catch(() => null);
 
-  // 完整財務指標獨立嘗試，不影響上面已顯示的報價
-  if(meta){ loadExtraFundamentals(ticker); }
+  const [chartRes, optionsRes, fundRes] = await Promise.all([chartPromise, optionsPromise, fundPromise]);
 
-  try {
-    await loadOptions(ticker);
-  } catch(e){
-    ok = false;
-  }
+  renderStrategy(ticker, chartRes, fundRes, optionsRes);
 
+  const ok = !!chartRes;
   if(ok){
     setStatus('已更新：' + ticker + '（' + new Date().toLocaleString('zh-TW') + '）', 'ok');
   } else {
     setStatus('部分資料取得失敗，已顯示成功的部分（' + ticker + '）', 'err');
   }
+}
+
+/* ============ 短線/長線觀察摘要（資料判讀，非投資建議） ============ */
+function computeMomentum(bars){
+  if(!bars || bars.length < 10) return null;
+  const closes = bars.map(b => b.close);
+  const n = closes.length;
+  const last = closes[n-1];
+  const shortIdx = Math.max(0, n-21); // 約近1個月交易日
+  const shortAgo = closes[shortIdx];
+  const longAgo = closes[0]; // 約6個月前
+  const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+  const ma20 = avg(closes.slice(Math.max(0, n-20)));
+  const ma60 = avg(closes.slice(Math.max(0, n-60)));
+  return {
+    last,
+    shortChangePct: (last - shortAgo) / shortAgo,
+    longChangePct: (last - longAgo) / longAgo,
+    aboveMa20: last > ma20,
+    aboveMa60: last > ma60,
+  };
+}
+
+function renderStrategy(ticker, chartRes, fund, opt){
+  const panel = document.getElementById('strategyPanel');
+  const mom = chartRes ? computeMomentum(chartRes.bars) : null;
+
+  if(!mom && !fund && !opt){
+    panel.innerHTML = `<h2>短線／長線觀察摘要</h2><div class="empty">資料不足，無法整理摘要</div>`;
+    return;
+  }
+
+  const shortItems = [];
+  const longItems = [];
+
+  if(mom){
+    const sDir = mom.shortChangePct >= 0 ? '走高' : '走低';
+    shortItems.push(`近一個月價格${sDir}約 ${fmtPct(Math.abs(mom.shortChangePct))}，${mom.aboveMa20 ? '站上20日均線，短線動能偏多' : '跌破20日均線，短線動能偏弱'}`);
+  }
+  if(opt && !isNaN(opt.pcRatio)){
+    shortItems.push(`選擇權籌碼：Put/Call未平倉比 ${fmtNum(opt.pcRatio,2)}（${opt.sentimentLabel}）`);
+  }
+  if(opt && !isNaN(opt.avgIv)){
+    const ivLevel = opt.avgIv > 0.5 ? '偏高，市場預期波動較大' : (opt.avgIv < 0.25 ? '偏低，市場預期波動較平靜' : '中等');
+    shortItems.push(`平均隱含波動率約 ${fmtPct(opt.avgIv)}，屬於${ivLevel}（經驗判斷：>50%偏高、25–50%中等、<25%偏低）`);
+  }
+  if(!shortItems.length) shortItems.push('短線資料不足，暫無法整理');
+
+  if(mom){
+    const lDir = mom.longChangePct >= 0 ? '上漲' : '下跌';
+    longItems.push(`近6個月累計${lDir}約 ${fmtPct(Math.abs(mom.longChangePct))}，價格位於60日均線${mom.aboveMa60 ? '之上，中期結構偏多' : '之下，中期結構偏弱'}`);
+  }
+  if(fund && fund.targetMean && mom){
+    const upside = (fund.targetMean - mom.last) / mom.last;
+    longItems.push(`分析師平均目標價 ${fmtNum(fund.targetMean)}，較現價${upside>=0?'高':'低'} ${fmtPct(Math.abs(upside))}（僅反映分析師預期，非保證）`);
+  }
+  if(fund && fund.forwardPE && fund.trailingPE){
+    const trend = fund.forwardPE < fund.trailingPE ? '預估本益比低於目前本益比，市場預期獲利成長' : '預估本益比不低於目前本益比，市場對獲利成長較保守';
+    longItems.push(`目前本益比 ${fmtNum(fund.trailingPE)} vs. 預估本益比 ${fmtNum(fund.forwardPE)}，${trend}`);
+  }
+  if(!longItems.length) longItems.push('長線資料不足，暫無法整理');
+
+  panel.innerHTML = `
+    <h2>短線／長線觀察摘要 <span class="note">資料判讀框架，非投資建議</span></h2>
+    <div class="strategy-block">
+      <div class="label">短線觀察（約1個月內）</div>
+      <ul>${shortItems.map(t => `<li>${t}</li>`).join('')}</ul>
+    </div>
+    <div class="strategy-block">
+      <div class="label">長線觀察（約6個月以上）</div>
+      <ul>${longItems.map(t => `<li>${t}</li>`).join('')}</ul>
+    </div>
+    <div class="strategy-note">以上是把已經抓到的價格動能、估值與選擇權籌碼數字轉成文字描述，幫助你更快讀懂現況——不是「買/賣」的操作指令。實際部位大小、進出場時機，取決於你自己的風險承受度與資金配置。</div>
+  `;
 }
 
 document.getElementById('goBtn').addEventListener('click', runQuery);
