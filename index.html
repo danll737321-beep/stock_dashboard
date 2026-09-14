@@ -521,31 +521,43 @@ function setStatus(msg, cls){
   s.textContent = msg || '';
   s.className = cls || '';
 }
-function proxied(url){
-  const base = document.getElementById('proxySel').value;
+const PROXIES = [
+  'https://api.allorigins.win/raw?url=',
+  'https://corsproxy.io/?url=',
+];
+function proxiedWith(base, url){
   return base + encodeURIComponent(url);
 }
-async function fetchJson(url, timeoutMs=10000){
+async function fetchOnce(fullUrl, timeoutMs, asText){
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try{
-    const res = await fetch(proxied(url), { signal: ctrl.signal });
+    const res = await fetch(fullUrl, { signal: ctrl.signal });
     if(!res.ok) throw new Error('HTTP ' + res.status);
-    return await res.json();
+    return asText ? await res.text() : await res.json();
   } finally {
     clearTimeout(t);
   }
 }
-async function fetchText(url, timeoutMs=20000){
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  try{
-    const res = await fetch(proxied(url), { signal: ctrl.signal });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    return await res.text();
-  } finally {
-    clearTimeout(t);
+// 依序嘗試「目前選的代理」→「另一個代理」，其中一個逾時或失敗就自動換下一個，不用手動切換再重試
+async function fetchWithFallback(url, timeoutMs, asText){
+  const selected = document.getElementById('proxySel').value;
+  const order = [selected, ...PROXIES.filter(p => p !== selected)];
+  let lastErr;
+  for(const base of order){
+    try{
+      return await fetchOnce(proxiedWith(base, url), timeoutMs, asText);
+    }catch(e){
+      lastErr = e;
+    }
   }
+  throw lastErr || new Error('所有代理皆失敗');
+}
+async function fetchJson(url, timeoutMs=18000){
+  return fetchWithFallback(url, timeoutMs, false);
+}
+async function fetchText(url, timeoutMs=25000){
+  return fetchWithFallback(url, timeoutMs, true);
 }
 function fmtNum(n, d=2){
   if(n === undefined || n === null || isNaN(n)) return '—';
@@ -1403,7 +1415,7 @@ async function runQuery(){
       return res;
     })
     .catch(e => {
-      document.getElementById('quotePanel').innerHTML = `<h2>基本面</h2><div class="empty">K線/報價資料取得失敗：${e.message}（可切換右上角代理再試）</div>`;
+      document.getElementById('quotePanel').innerHTML = `<h2>基本面</h2><div class="empty">K線/報價資料取得失敗：${e.message}（已自動改試過兩個代理都失敗，可能是Yahoo暫時限流，稍後再查一次）</div>`;
       document.getElementById('klineSignal').textContent = '無法判讀（資料取得失敗）';
       document.getElementById('trendModel').textContent = '無法計算（資料取得失敗）';
       loadNews(ticker, null);
