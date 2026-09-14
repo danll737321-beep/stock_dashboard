@@ -11,15 +11,15 @@
     src: local('IBM Plex Mono');
   }
   :root{
-    --bg:#FFFFFF;
-    --panel:#FFFFFF;
-    --panel-2:#F7F8F9;
-    --line:#DDE3E7;
-    --text:#151A1E;
-    --muted:#6B7680;
-    --up:#1E8E5A;
-    --down:#C6392C;
-    --gold:#1E8E5A;
+    --bg:#0B0F12;
+    --panel:#141A1F;
+    --panel-2:#10151A;
+    --line:#2E3944;
+    --text:#F0F4F7;
+    --muted:#9AA7B2;
+    --up:#4FD69C;
+    --down:#FF6F61;
+    --gold:#E5B567;
     --mono: 'IBM Plex Mono', 'Consolas', monospace;
     --sans: 'IBM Plex Sans', 'Noto Sans TC', -apple-system, sans-serif;
   }
@@ -41,9 +41,53 @@
     flex:1; padding:10px 12px; border:1px solid var(--line); background:var(--panel-2); border-radius:4px;
     cursor:pointer; font-family:var(--sans); font-size:14px; font-weight:600; color:var(--muted); text-align:center;
   }
-  .main-tab-btn.active{ background:var(--gold); color:#FFFFFF; border-color:var(--gold); }
+  .main-tab-btn.active{ background:var(--gold); color:#141A1F; border-color:var(--gold); }
   .main-tab-content{ display:none; }
   .main-tab-content.active{ display:block; }
+
+  /* 股票分析頁內的子分頁（總覽/技術指標/回測/新聞） */
+  .tab-btns{ display:flex; gap:6px; margin: 4px 0 16px; flex-wrap:wrap; }
+  .tab-btn{
+    padding:7px 14px; border:1px solid var(--line); background:var(--panel-2); border-radius:4px;
+    cursor:pointer; font-family:var(--mono); font-size:12.5px; color:var(--muted);
+  }
+  .tab-btn.active{ background:var(--panel); color:var(--gold); border-color:var(--gold); font-weight:600; }
+  .tab-content{ display:none; }
+  .tab-content.active{ display:block; }
+
+  /* 搜尋列置頂，長頁面往下滑也能直接改查別的代號 */
+  .sticky-search{
+    position: sticky; top: 0; z-index: 20; background: var(--bg);
+    padding: 10px 0 12px; margin-bottom: 4px !important; border-bottom: 1px solid var(--line);
+  }
+
+  /* 收合區塊：進階設定、K線基礎說明 */
+  details.adv-settings, details.kline-explain-details{
+    margin-bottom: 14px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2);
+  }
+  details.kline-explain-details{ margin-bottom: 12px; }
+  details.adv-settings summary, details.kline-explain-details summary{
+    padding: 9px 14px; cursor: pointer; font-size: 12.5px; color: var(--muted); font-family: var(--mono);
+    list-style: none;
+  }
+  details.adv-settings summary::-webkit-details-marker, details.kline-explain-details summary::-webkit-details-marker{ display:none; }
+  details.adv-settings summary::before{ content:'▸ '; color: var(--gold); }
+  details.adv-settings[open] summary::before{ content:'▾ '; }
+  details.kline-explain-details summary::before{ content:'▸ '; color: var(--gold); }
+  details.kline-explain-details[open] summary::before{ content:'▾ '; }
+  details.adv-settings > .search-row{ padding: 0 14px 14px; }
+  details.kline-explain-details .kline-explain{ padding: 0 14px 12px; margin: 0; border: none; }
+
+  /* 訊號卡：查詢後結論直接浮在最上面 */
+  #signalCard .signal-card-row{ display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  #signalCard .signal-card-item{ display:flex; align-items:center; gap:8px; }
+  #signalCard .signal-card-label{ font-family:var(--mono); font-size:12px; color:var(--muted); }
+  #signalCard .signal-card-note{ font-size:12px; color:var(--muted); margin-top:8px; }
+
+  /* 大戶籌碼卡片：桌面版雙欄排列，減少直向卷動 */
+  .whale-grid{ display:grid; grid-template-columns: 1fr; gap: 4px; }
+  @media (min-width: 760px){ .whale-grid{ grid-template-columns: 1fr 1fr; column-gap: 24px; } }
+  .whale-card{ margin-bottom: 18px; }
 
   .search-row{ display:flex; gap:8px; margin-bottom: 16px; flex-wrap: wrap; }
   .search-row input[type=text]{
@@ -52,7 +96,7 @@
   }
   .search-row input[type=text]:focus{ border-color: var(--gold); }
   .search-row button{
-    background: var(--gold); color:#FFFFFF; border:none; font-family: var(--sans); font-weight:600;
+    background: var(--gold); color:#141A1F; border:none; font-family: var(--sans); font-weight:600;
     font-size:14px; padding: 0 22px; border-radius:3px; cursor:pointer;
   }
   .search-row button:hover{ filter: brightness(1.08); }
@@ -66,7 +110,7 @@
 
   .panel{
     background: var(--panel); border:1px solid var(--line); border-radius:3px; padding: 16px 18px; margin-bottom:16px;
-    box-shadow: 0 1px 3px rgba(20,25,30,0.06);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
   }
   .panel h2{
     font-size: 13px; font-weight:600; margin: 0 0 12px; color: var(--gold); letter-spacing: 0.3px;
@@ -87,7 +131,7 @@
 
   table{ width:100%; border-collapse: collapse; font-size: 12.5px; }
   table th{ text-align:left; color:var(--muted); font-weight:500; font-size:11px; padding: 4px 6px; border-bottom: 1px solid var(--line); }
-  table td{ padding: 6px 6px; border-bottom: 1px solid #EEF1F3; font-family: var(--mono); }
+  table td{ padding: 6px 6px; border-bottom: 1px solid #212A31; font-family: var(--mono); }
   table tr:last-child td{ border-bottom:none; }
   a{ color: var(--gold); text-decoration:none; }
   a:hover{ text-decoration: underline; }
@@ -112,14 +156,14 @@
 
   .whale-controls{ display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
   .whale-controls select{ background:var(--panel); border:1px solid var(--line); color:var(--text); font-family:var(--mono); font-size:12px; padding:6px 8px; border-radius:3px; flex:1; min-width:160px; }
-  .whale-controls button{ background:var(--gold); color:#FFFFFF; border:none; font-family:var(--sans); font-weight:600; font-size:12px; padding:6px 14px; border-radius:3px; cursor:pointer; }
+  .whale-controls button{ background:var(--gold); color:#141A1F; border:none; font-family:var(--sans); font-weight:600; font-size:12px; padding:6px 14px; border-radius:3px; cursor:pointer; }
   .pie-wrap{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-top:10px; }
   .pie-chart{ width:140px; height:140px; border-radius:50%; flex-shrink:0; }
   .pie-legend{ flex:1; min-width:180px; font-size:12px; font-family:var(--mono); }
   .pie-legend-item{ display:flex; align-items:center; gap:6px; margin-bottom:4px; }
   .pie-swatch{ width:10px; height:10px; border-radius:2px; flex-shrink:0; }
 
-  .news-item{ padding:8px 0; border-bottom:1px solid #EEF1F3; font-size:13px; }
+  .news-item{ padding:8px 0; border-bottom:1px solid #212A31; font-size:13px; }
   .news-item:last-child{ border-bottom:none; }
   .news-item a{ color:var(--text); font-weight:500; }
   .news-item .news-date{ font-size:11px; color:var(--muted); font-family:var(--mono); display:block; margin-top:2px; }
@@ -140,7 +184,7 @@
 
   <!-- ===================== 股票分析 ===================== -->
   <div class="main-tab-content active" id="stockTab">
-    <div class="search-row">
+    <div class="search-row sticky-search">
       <input type="text" id="tickerInput" placeholder="輸入代號，例如 AAPL、TSLA、2330.TW" value="">
       <select id="proxySel" title="CORS代理（若查無資料可切換）">
         <option value="https://api.allorigins.win/raw?url=">代理: allorigins</option>
@@ -148,34 +192,81 @@
       </select>
       <button id="goBtn">查詢</button>
     </div>
+
+    <details class="adv-settings">
+      <summary>進階設定（Twelve Data API金鑰／同業比較，選填）</summary>
+      <div class="search-row" style="margin-top:10px;">
+        <input type="text" id="apiKeyInput" placeholder="Twelve Data API金鑰(選填，twelvedata.com免費申請，讓回測資料更穩定)">
+        <input type="text" id="peerInput" placeholder="同業比較代號，逗號分隔最多3檔，例如 MSFT,GOOGL,META(選填)">
+      </div>
+    </details>
+
     <div id="status"></div>
 
-    <div class="panel" id="quotePanel">
-      <h2>基本面</h2>
-      <div class="empty">輸入代號後查詢</div>
+    <div class="panel" id="signalCard" style="display:none;"></div>
+
+    <div class="tab-btns">
+      <button class="tab-btn active" data-subtab="subOverview">總覽</button>
+      <button class="tab-btn" data-subtab="subTech">技術指標</button>
+      <button class="tab-btn" data-subtab="subBacktest">回測</button>
+      <button class="tab-btn" data-subtab="subNews">新聞</button>
     </div>
 
-    <div class="panel">
-      <h2>K線走勢（近6個月，日線）</h2>
-      <div class="kline-explain">K線（蠟燭圖）用四個價格點呈現每天的交易：開盤價、收盤價、最高價、最低價。綠色代表當天收盤價高於開盤價（上漲），紅色代表收盤價低於開盤價（下跌）；實體上下延伸的細線（影線）代表當天觸及過的最高與最低價。連續的K線排列可以看出短期買賣力道的變化。</div>
-      <div id="chart"></div>
-      <div class="signal-box" id="klineSignal" style="margin-top:12px;">查詢後顯示均線位置與近期振幅的訊號判讀</div>
-      <div class="signal-box" id="trendModel">查詢後顯示線性回歸模型推測的趨勢方向</div>
+    <div class="tab-content active" id="subOverview">
+      <div class="panel" id="quotePanel">
+        <h2>基本面</h2>
+        <div class="empty">輸入代號後查詢</div>
+      </div>
+
+      <div class="panel" id="strategyPanel">
+        <h2>短線／長線觀察摘要</h2>
+        <div class="empty">查詢後根據技術面、估值面、籌碼面計算訊號，含選擇權建議策略</div>
+      </div>
+
+      <div class="panel" id="peerPanel" style="display:none;">
+        <h2>同業估值比較</h2>
+        <div class="empty"></div>
+      </div>
+
+      <div class="panel" id="signalHistoryPanel" style="display:none;">
+        <h2>此代號的歷史訊號紀錄</h2>
+        <div class="empty"></div>
+      </div>
     </div>
 
-    <div class="panel" id="stepCheckPanel">
-      <h2>交易者四步驟檢查</h2>
-      <div class="empty">查詢後依序判讀大勢、廣度、位置動量、時機四個步驟</div>
+    <div class="tab-content" id="subTech">
+      <div class="panel">
+        <h2>K線走勢（近6個月，日線）</h2>
+        <details class="kline-explain-details">
+          <summary>K線是什麼？（第一次看可以展開）</summary>
+          <div class="kline-explain">K線（蠟燭圖）用四個價格點呈現每天的交易：開盤價、收盤價、最高價、最低價。綠色代表當天收盤價高於開盤價（上漲），紅色代表收盤價低於開盤價（下跌）；實體上下延伸的細線（影線）代表當天觸及過的最高與最低價。連續的K線排列可以看出短期買賣力道的變化。</div>
+        </details>
+        <div id="chart"></div>
+        <div class="signal-box" id="klineSignal" style="margin-top:12px;">查詢後顯示均線位置與近期振幅的訊號判讀</div>
+        <div class="signal-box" id="trendModel">查詢後顯示線性回歸模型推測的趨勢方向</div>
+      </div>
+
+      <div class="panel" id="stepCheckPanel">
+        <h2>核心指標模組</h2>
+        <div class="empty">查詢後依序顯示：圖表基底、大盤廣度(MSI)、趨勢確認(MA/MACD)、動量時機(RSI/KD)</div>
+      </div>
     </div>
 
-    <div class="panel" id="strategyPanel">
-      <h2>短線／長線觀察摘要</h2>
-      <div class="empty">查詢後根據技術面、估值面、籌碼面計算訊號，含選擇權建議策略</div>
+    <div class="tab-content" id="subBacktest">
+      <div class="panel" id="backtestPanel">
+        <h2>策略回測</h2>
+        <div class="empty">回測需要額外抓取近2年歷史資料，比較耗時，所以獨立成按鈕觸發，不會拖慢一般查詢速度</div>
+        <div class="whale-controls" style="margin-top:10px;">
+          <button id="runBacktestBtn">執行回測（抓近2年資料，需要額外時間）</button>
+        </div>
+      </div>
     </div>
 
-    <div class="panel" id="newsPanel">
-      <h2>近期相關新聞</h2>
-      <div class="empty">查詢後顯示近期相關報導</div>
+    <div class="tab-content" id="subNews">
+      <div class="panel" id="newsPanel">
+        <h2>近期相關新聞</h2>
+        <div class="empty">查詢後顯示近期相關報導</div>
+      </div>
     </div>
   </div>
 
@@ -193,28 +284,57 @@
   <!-- ===================== 大戶籌碼 ===================== -->
   <div class="main-tab-content" id="whaleTab">
     <div class="panel">
-      <h2>大戶籌碼參考 <span class="note">申報延遲，非即時</span></h2>
-      <div class="subhead">政治人物（STOCK Act 揭露，僅個別交易紀錄）</div>
+      <h2>追蹤名單資金動向整理 <span class="note">僅根據下方5位人物，非全市場機構共識</span></h2>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">這不是「市場上所有大型機構的共識」（那需要橫跨數十檔13F才有統計意義），而是把我們實際追蹤的這5位人物最新揭露的真實動作，整理成同一種格式方便你掃描。每一格都能對應到下面卡片裡的原始說明。</div>
       <table>
-        <thead><tr><th>人物</th><th>說明</th><th>來源</th></tr></thead>
-        <tbody id="politicianTbl"></tbody>
+        <thead><tr><th>資金/政策方向</th><th>具體動作（依人物）</th><th>涉及核心標的</th></tr></thead>
+        <tbody id="consensusTbl"></tbody>
       </table>
-      <div class="whale-date">政治人物揭露的是「單筆交易」，不是完整持股比重，所以無法做成產業佔比圖；開連結後自行搜尋你查詢的代號確認是否有交易紀錄。</div>
+    </div>
 
-      <div class="subhead">川普即時動向 <span style="color:var(--muted);font-weight:400;">（身為現任總統，無結構化持股資料可即時抓取，改用近期政策相關新聞觀察他在帶什麼風向）</span></div>
-      <div class="whale-controls">
-        <button id="trumpNewsBtn">載入川普最新動向</button>
+    <div class="whale-grid">
+      <div class="whale-card panel">
+        <div class="subhead" style="margin-top:0;">Nancy Pelosi 家族 <span style="color:var(--muted);font-weight:400;">（STOCK Act揭露，僅個別交易紀錄，非完整持股）</span></div>
+        <div style="font-size:12.5px;line-height:1.7;color:var(--text);">申報揭露的交易絕大多數是由她的配偶 Paul Pelosi 執行，嚴格來說是在追蹤「Pelosi家族」的申報，不是Nancy Pelosi本人下單。長期以來集中於大型科技股（如輝達、微軟、蘋果、Alphabet等）的股票與長天期選擇權部位，市場常將其揭露視為觀察科技政策風向的參考之一。揭露本身有30–45天延遲，適合觀察「國會周邊對哪個產業感興趣」，不適合當即時跟單依據。</div>
+        <div class="whale-controls">
+          <button id="pelosiNewsBtn">載入Pelosi家族最新動向（近期交易/新聞）</button>
+        </div>
+        <div id="pelosiNewsArea"><div class="empty">點按鈕載入近期與Pelosi家族股票交易相關的新聞</div></div>
+        <div class="whale-date">申報原始來源：<a href="https://www.capitoltrades.com/politicians/P000197" target="_blank" rel="noopener">Capitol Trades</a> ／ <a href="https://www.quiverquant.com/congresstrading/politician/Nancy%20Pelosi-P000197" target="_blank" rel="noopener">QuiverQuant</a>（開連結後自行搜尋你查詢的代號確認是否有交易紀錄）</div>
       </div>
-      <div id="trumpNewsArea"><div class="empty">點按鈕載入近期與川普相關的關稅／科技／加密貨幣／AI政策新聞</div></div>
 
-      <div class="subhead">知名基金經理人（13F 持股佔比，每季揭露，延遲可達45天）</div>
-      <div class="whale-controls">
-        <select id="whaleSelect"></select>
-        <button id="whaleLoadBtn">載入持股佔比</button>
+      <div class="whale-card panel">
+        <div class="subhead" style="margin-top:0;">Donald Trump <span style="color:var(--muted);font-weight:400;">（現任總統，無結構化持股資料可即時抓取）</span></div>
+        <div style="font-size:12.5px;line-height:1.7;color:var(--text);">身為現任總統，個人資產以OGE年度財產申報揭露，頻率遠低於國會議員、顆粒度也較粗，沒有可即時抓取的結構化持股資料。比較有意義的做法是觀察他近期在關稅、科技、加密貨幣、AI等政策上的言論與行政動作，這些往往比任何申報都更快牽動市場。</div>
+        <div class="whale-controls">
+          <button id="trumpNewsBtn">載入川普最新動向（近期政策新聞）</button>
+        </div>
+        <div id="trumpNewsArea"><div class="empty">點按鈕載入近期與川普相關的關稅／科技／加密貨幣／AI政策新聞</div></div>
       </div>
-      <div id="whalePieArea"><div class="empty">選擇人物後點「載入持股佔比」，會直接向SEC調取最新13F申報並畫圖（檔案較大，需要幾秒到二十秒）</div></div>
+
+      <div class="whale-card panel">
+        <div class="subhead" style="margin-top:0;">Warren Buffett（Berkshire Hathaway） <span style="color:var(--muted);font-weight:400;">（13F，每季揭露）</span></div>
+        <div style="font-size:12.5px;line-height:1.7;color:var(--text);">操作風格是集中持有、低換手率，偏好具寬護城河、高現金流的成熟企業；加減碼往往要連續數季才會顯現趨勢。適合當長線、低頻的參考指標，不適合短線跟單。</div>
+        <div id="pie_berkshire"></div>
+        <div class="whale-controls"><button class="whale-refresh-btn" data-key="berkshire">嘗試即時更新（向SEC抓最新申報）</button></div>
+      </div>
+
+      <div class="whale-card panel">
+        <div class="subhead" style="margin-top:0;">Bill Gates（Gates Foundation Trust） <span style="color:var(--muted);font-weight:400;">（13F，每季揭露）</span></div>
+        <div style="font-size:12.5px;line-height:1.7;color:var(--text);">配置偏防禦型與基礎建設／民生剛需（鐵路、廢棄物處理、波克夏本身），換手率低、風格保守，比較適合當抗通膨、穩定配置取向的長線參考。</div>
+        <div id="pie_gates"></div>
+        <div class="whale-controls"><button class="whale-refresh-btn" data-key="gates">嘗試即時更新（向SEC抓最新申報）</button></div>
+      </div>
+
+      <div class="whale-card panel">
+        <div class="subhead" style="margin-top:0;">Cathie Wood（ARK Investment Management） <span style="color:var(--muted);font-weight:400;">（13F，每季揭露）</span></div>
+        <div style="font-size:12.5px;line-height:1.7;color:var(--text);">策略集中在高成長、顛覆式創新主題（電動車、基因編輯、AI等），換手率與集中度都偏高，波動明顯大於大盤。適合觀察市場對顛覆性創新題材的熱度，不是穩健配置的參考。</div>
+        <div id="pie_ark"></div>
+        <div class="whale-controls"><button class="whale-refresh-btn" data-key="ark">嘗試即時更新（向SEC抓最新申報）</button></div>
+      </div>
     </div>
   </div>
+
 
   <div class="disclaimer">
     本工具整合公開資料並用固定規則（EMA大盤大勢、市場廣度代理指標、均線、RSI、支撐壓力、K線型態、成交量、線性回歸、估值、選擇權籌碼）計算出技術訊號與建議策略方向，方法完全透明、寫在上方各面板裡；這是機械式的量化訊號燈，不是針對你個人財務狀況、風險承受度、資金規模所做的客製化投資建議，也不保證獲利或準確性。市場廣度目前用等權重ETF(RSP)與小型股ETF(IWM)相對大盤(SPY)的表現當代理指標，不是真正的官方騰落家數統計，這點請留意。K線與基本面資料經由免費、非官方端點取得，可能延遲或缺漏；13F持股佔比是機構最近一次申報的靜態快照，反映申報當下、不是現在的部位。實際下單與部位大小，請自行判斷並承擔風險。
@@ -230,6 +350,16 @@ document.querySelectorAll('.main-tab-btn').forEach(btn => {
     document.querySelectorAll('.main-tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById(btn.dataset.maintab).classList.add('active');
+  });
+});
+
+/* ============ 股票分析頁內的子分頁切換 ============ */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.subtab).classList.add('active');
   });
 });
 
@@ -250,17 +380,51 @@ const MACRO_SNAPSHOT = {
   ]
 };
 
-const POLITICIANS = [
-  ["Nancy Pelosi", "前眾議院議長，交易多由配偶執行，2027年將退休、屆時停止揭露", "https://www.capitoltrades.com/politicians/P000197", "https://www.quiverquant.com/congresstrading/politician/Nancy%20Pelosi-P000197"],
-  ["Donald Trump", "現任總統，個人資產以OGE年度財產申報揭露，頻率遠低於國會議員、顆粒度也較粗", "https://www.capitoltrades.com/politicians", "https://www.quiverquant.com/congresstrading"],
-];
-
 const FUND_MANAGERS = {
   berkshire:   { name: "Warren Buffett（Berkshire Hathaway）", cik: "0001067983" },
-  scion:       { name: "Michael Burry（Scion Asset Management）", cik: "0001649339" },
-  bridgewater: { name: "Ray Dalio（Bridgewater Associates）", cik: "0001350694" },
-  ark:         { name: "Cathie Wood（ARK Investment Management）", cik: "0001697748" },
   gates:       { name: "Bill Gates（Gates Foundation Trust）", cik: "0001166559" },
+  ark:         { name: "Cathie Wood（ARK Investment Management）", cik: "0001697748" },
+};
+
+// 備援快照：SEC官方即時抓取偶爾會因免費CORS代理被SEC擋下而失敗，這裡先放人工彙整的最近一期13F重點，
+// 確保頁面一定有東西可看；點「嘗試即時更新」才會去抓SEC官方最新數字覆蓋掉這份快照。
+const STATIC_HOLDINGS = {
+  berkshire: {
+    asOf: "2026-06-30（2026 Q2，2026-08-14申報）",
+    totalLabel: "約 $299.3B，27檔持股",
+    items: [
+      { name: "Apple (AAPL)", pct: 22.0 },
+      { name: "American Express (AXP)", pct: 17.1 },
+      { name: "Coca-Cola (KO)", pct: 10.9 },
+      { name: "Alphabet (GOOGL)", pct: 9.4 },
+      { name: "Bank of America (BAC)", pct: 9.2 },
+      { name: "其他22檔合計", pct: 31.4 },
+    ],
+    recentMoves: "本季加碼 Alphabet、達美航空、Lennar、Macy's、紐約時報；減碼美國銀行、DaVita、Kroger、Ally Financial，並出清約58%的 Capital One 部位。"
+  },
+  ark: {
+    asOf: "2026-03-31（2026 Q1）",
+    totalLabel: "約 $12.9B，182檔持股",
+    items: [
+      { name: "Tesla (TSLA)，最大單一持股", pct: 9.3 },
+      { name: "前五大其餘四檔合計（AMD、CRSP、SHOP、PLTR）", pct: 17.1 },
+      { name: "其他177檔合計", pct: 73.6 },
+    ],
+    recentMoves: "前五大持股（TSLA、AMD、CRSP、SHOP、PLTR）合計約26.4%，TSLA單一佔9.3%為最大部位；個別的AMD/CRSP/SHOP/PLTR精確占比彙整資料未提供，只給得出前五大合計數字，確切個別比例請按下方「嘗試即時更新」向SEC抓取原始申報。"
+  },
+  gates: {
+    asOf: "2026-03-31（2026 Q1）",
+    totalLabel: "約 $31.7B，22檔持股",
+    items: [
+      { name: "Berkshire Hathaway B (BRK.B)", pct: 25.80 },
+      { name: "Waste Management (WM)", pct: 20.06 },
+      { name: "Canadian National Railway (CNI)", pct: 16.82 },
+      { name: "Caterpillar (CAT)", pct: 14.22 },
+      { name: "Deere & Co (DE)", pct: 6.33 },
+      { name: "其他17檔合計", pct: 16.77 },
+    ],
+    recentMoves: "前五大持股合計約83.2%，集中在波克夏、廢棄物處理、鐵路、重機械等防禦型／基礎建設類股，風格穩健、換手率低。"
+  },
 };
 
 function renderMacro(){
@@ -270,18 +434,65 @@ function renderMacro(){
   document.getElementById('macroEvents').innerHTML = MACRO_SNAPSHOT.globalEvents.map(e => `<li>${e}</li>`).join('');
   document.getElementById('macroDate').textContent = "資料快照日期：" + MACRO_SNAPSHOT.asOf;
 }
-function renderPoliticianTable(){
-  document.getElementById('politicianTbl').innerHTML = POLITICIANS.map(p =>
-    `<tr><td>${p[0]}</td><td>${p[1]}</td><td><a href="${p[2]}" target="_blank" rel="noopener">Capitol Trades</a> ／ <a href="${p[3]}" target="_blank" rel="noopener">QuiverQuant</a></td></tr>`
+function staticFallbackHtml(key){
+  const d = STATIC_HOLDINGS[key];
+  const info = FUND_MANAGERS[key];
+  if(!d) return '<div class="empty">尚無備援快照，請按下方按鈕嘗試即時抓取</div>';
+  const colors = ['#4FD69C','#FF6F61','#9AA7B2','#8FD9BE','#F0A99C','#5FA184'];
+  const hasPct = d.items.every(it => it.pct != null);
+  let vizHtml;
+  if(hasPct){
+    let acc = 0;
+    const stops = d.items.map((it,i) => { const start=acc; acc+=it.pct; return `${colors[i%colors.length]} ${start}% ${acc}%`; }).join(', ');
+    const legend = d.items.map((it,i) => `<div class="pie-legend-item"><span class="pie-swatch" style="background:${colors[i%colors.length]}"></span>${it.name}（${it.pct}%）</div>`).join('');
+    vizHtml = `<div class="pie-wrap"><div class="pie-chart" style="background: conic-gradient(${stops});"></div><div class="pie-legend">${legend}</div></div>`;
+  } else {
+    vizHtml = `<ul style="margin:8px 0 0;padding-left:18px;font-size:12.5px;line-height:1.8;">${d.items.map(it=>`<li>${it.name}</li>`).join('')}</ul>`;
+  }
+  return `
+    <div class="macro-date">備援快照（人工彙整自公開13F彙總資料，非即時抓取） · 申報期別 ${d.asOf}</div>
+    <div class="macro-date">投組規模：${d.totalLabel}</div>
+    ${vizHtml}
+    <div class="whale-date">近期動向：${d.recentMoves}</div>
+  `;
+}
+function showAllFallbacks(){
+  Object.keys(FUND_MANAGERS).forEach(key => {
+    const el = document.getElementById('pie_' + key);
+    if(el) el.innerHTML = staticFallbackHtml(key);
+  });
+}
+
+// 跨人物資金動向整理：只根據我們實際追蹤的這5位人物最新揭露的真實動作彙整，不是全市場機構共識
+const WHALE_CONSENSUS = [
+  {
+    theme: '🔌 AI瓶頸轉向：算力／半導體基礎建設',
+    action: 'Pelosi家族與川普政府都在半導體加碼／推動本土投資；ARK加碼AI雲端算力供應商，反映AI瓶頸的關注焦點從晶片本身移向電力與運算基礎設施。',
+    tickers: '輝達(NVDA)、英特爾(INTC)、CoreWeave(CRWV)'
+  },
+  {
+    theme: '⚡ 科技巨頭分歧：Alphabet獲共識加碼，前期噴出股獲利了結',
+    action: 'Buffett（波克夏）與ARK同一季都加碼Alphabet，是少見的價值型與成長型投資人同步動作；ARK同時減碼特斯拉、Palantir、Coinbase等前期漲多的部位。',
+    tickers: 'Alphabet(GOOGL)、特斯拉(TSLA)、Palantir(PLTR)'
+  },
+  {
+    theme: '🛡️ 防禦與避險並行：基礎建設持股不變，選擇權避險常態化',
+    action: 'Gates基金會維持低換手率的防禦型基建持股（鐵路、廢棄物處理）；Pelosi家族的申報中常見深價內長天期選擇權操作，兼具方向性與避險性質。',
+    tickers: 'Waste Management(WM)、Canadian National Railway(CNI)'
+  },
+];
+function renderConsensusTable(){
+  document.getElementById('consensusTbl').innerHTML = WHALE_CONSENSUS.map(row =>
+    `<tr><td style="white-space:nowrap;">${row.theme}</td><td>${row.action}</td><td>${row.tickers}</td></tr>`
   ).join('');
 }
-function renderWhaleSelect(){
-  const sel = document.getElementById('whaleSelect');
-  sel.innerHTML = Object.entries(FUND_MANAGERS).map(([key,v]) => `<option value="${key}">${v.name}</option>`).join('');
-}
+
 renderMacro();
-renderPoliticianTable();
-renderWhaleSelect();
+showAllFallbacks();
+renderConsensusTable();
+document.querySelectorAll('.whale-refresh-btn').forEach(btn => {
+  btn.addEventListener('click', () => loadWhale13F(btn.dataset.key));
+});
 
 /* ============ 圖表 ============ */
 let chart, series;
@@ -290,15 +501,15 @@ function initChart(){
   el.innerHTML = '';
   chart = LightweightCharts.createChart(el, {
     width: el.clientWidth, height: 320,
-    layout: { background: { color: 'transparent' }, textColor: '#6B7680', fontFamily: 'IBM Plex Mono, monospace', fontSize: 11 },
-    grid: { vertLines: { color: '#EEF1F3' }, horzLines: { color: '#EEF1F3' } },
-    rightPriceScale: { borderColor: '#DDE3E7' },
-    timeScale: { borderColor: '#DDE3E7' },
+    layout: { background: { color: 'transparent' }, textColor: '#9AA7B2', fontFamily: 'IBM Plex Mono, monospace', fontSize: 11 },
+    grid: { vertLines: { color: '#212A31' }, horzLines: { color: '#212A31' } },
+    rightPriceScale: { borderColor: '#2E3944' },
+    timeScale: { borderColor: '#2E3944' },
     crosshair: { mode: 0 },
   });
   series = chart.addCandlestickSeries({
-    upColor: '#1E8E5A', downColor: '#C6392C', borderVisible: false,
-    wickUpColor: '#1E8E5A', wickDownColor: '#C6392C',
+    upColor: '#4FD69C', downColor: '#FF6F61', borderVisible: false,
+    wickUpColor: '#4FD69C', wickDownColor: '#FF6F61',
   });
   window.addEventListener('resize', () => { if(chart) chart.applyOptions({ width: el.clientWidth }); });
 }
@@ -401,6 +612,7 @@ function renderExtraFundamentals(r){
   const ap = r.assetProfile || {};
   const eh = (r.earningsHistory && r.earningsHistory.history) || [];
   const rt = (r.recommendationTrend && r.recommendationTrend.trend) || [];
+  const earningsRaw = r.calendarEvents?.earnings?.earningsDate?.[0]?.raw;
 
   let html = `
     <div class="kv">
@@ -417,8 +629,14 @@ function renderExtraFundamentals(r){
       <div class="l">分析師建議</div><div class="v">${fd.recommendationKey || '—'}</div>
     </div>
   `;
+  if(earningsRaw){
+    const d = new Date(earningsRaw*1000);
+    const daysUntil = Math.round((earningsRaw*1000 - Date.now())/86400000);
+    const warn = (daysUntil>=0 && daysUntil<=7) ? `<span style="color:var(--down);font-weight:600;">（${daysUntil}天內，技術面訊號可信度降低，選擇權留意IV崩塌風險）</span>` : '';
+    html += `<div class="macro-date" style="margin-top:10px;">下次財報預估日期：${d.toISOString().slice(0,10)}（距今約${daysUntil}天）${warn}</div>`;
+  }
   if(ap.sector || ap.industry){
-    html += `<div class="macro-date" style="margin-top:10px;">產業別：${ap.sector||'—'} ／ ${ap.industry||'—'}</div>`;
+    html += `<div class="macro-date" style="margin-top:6px;">產業別：${ap.sector||'—'} ／ ${ap.industry||'—'}</div>`;
   }
   if(ap.longBusinessSummary){
     const s = ap.longBusinessSummary;
@@ -441,13 +659,15 @@ function renderExtraFundamentals(r){
 
 async function loadExtraFundamentals(ticker){
   try{
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=price,summaryDetail,defaultKeyStatistics,financialData,assetProfile,earningsHistory,recommendationTrend`;
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=price,summaryDetail,defaultKeyStatistics,financialData,assetProfile,earningsHistory,recommendationTrend,calendarEvents`;
     const data = await fetchJson(url);
     const r = data?.quoteSummary?.result?.[0];
     if(!r) throw new Error('無資料');
     renderExtraFundamentals(r);
     const rt = (r.recommendationTrend && r.recommendationTrend.trend) || [];
     const t0 = rt[0] || {};
+    const earningsRaw = r.calendarEvents?.earnings?.earningsDate?.[0]?.raw;
+    const earningsInDays = earningsRaw ? Math.round((earningsRaw*1000 - Date.now())/86400000) : null;
     return {
       forwardPE: r.summaryDetail?.forwardPE?.raw,
       trailingPE: r.summaryDetail?.trailingPE?.raw,
@@ -455,6 +675,7 @@ async function loadExtraFundamentals(ticker){
       recommendationKey: r.financialData?.recommendationKey,
       bullishAnalysts: (t0.strongBuy||0) + (t0.buy||0),
       bearishAnalysts: (t0.sell||0) + (t0.strongSell||0),
+      earningsInDays,
     };
   }catch(e){
     const el = document.getElementById('extraFundamentals');
@@ -604,6 +825,246 @@ function computeEMASeries(closes, period){
   return ema;
 }
 
+// MACD(12,26,9)：趨勢確認用的動能指標，DIF(快慢EMA差) 與 訊號線(DIF的9日EMA)的交叉，判斷趨勢是否轉強/轉弱
+function computeMACD(closes){
+  if(!closes || closes.length < 35) return null;
+  const ema12 = computeEMASeries(closes, 12);
+  const ema26 = computeEMASeries(closes, 26);
+  const macdLine = closes.map((_,i) => (ema12[i]!=null && ema26[i]!=null) ? ema12[i]-ema26[i] : null);
+  const startIdx = macdLine.findIndex(v => v != null);
+  if(startIdx === -1) return null;
+  const validMacd = macdLine.slice(startIdx);
+  const signalSeries = computeEMASeries(validMacd, 9);
+  const n = validMacd.length;
+  const lastMacd = validMacd[n-1];
+  const lastSignal = signalSeries[n-1];
+  if(lastMacd == null || lastSignal == null) return null;
+  const histogram = lastMacd - lastSignal;
+  let crossEvent = null;
+  for(let i=Math.max(1, n-5); i<n; i++){
+    if(signalSeries[i]==null || signalSeries[i-1]==null) continue;
+    if(validMacd[i-1] <= signalSeries[i-1] && validMacd[i] > signalSeries[i]) crossEvent = '黃金交叉（DIF上穿訊號線）';
+    if(validMacd[i-1] >= signalSeries[i-1] && validMacd[i] < signalSeries[i]) crossEvent = '死亡交叉（DIF下穿訊號線）';
+  }
+  return { macd: lastMacd, signal: lastSignal, histogram, crossEvent };
+}
+
+// KD(9)：台股慣用的隨機指標（Stochastic Oscillator），用RSV(價格在近期高低區間的相對位置)平滑後得出K、D
+function computeKD(bars, period=9){
+  if(!bars || bars.length < period+1) return null;
+  let k = 50, d = 50;
+  for(let i=period-1; i<bars.length; i++){
+    const window = bars.slice(i-period+1, i+1);
+    const highMax = Math.max(...window.map(b=>b.high));
+    const lowMin = Math.min(...window.map(b=>b.low));
+    const close = bars[i].close;
+    const rsv = highMax > lowMin ? (close-lowMin)/(highMax-lowMin)*100 : 50;
+    k = (2/3)*k + (1/3)*rsv;
+    d = (2/3)*d + (1/3)*k;
+  }
+  return { k, d };
+}
+
+/* ============ 滾動指標序列（每個歷史時間點都算一次，供回測與百分位門檻使用） ============ */
+function computeRollingSMA(values, period){
+  const out = new Array(values.length).fill(null);
+  for(let i=period-1; i<values.length; i++){
+    let sum = 0;
+    for(let j=i-period+1; j<=i; j++) sum += values[j];
+    out[i] = sum/period;
+  }
+  return out;
+}
+function computeRollingRSI(closes, period=14){
+  const out = new Array(closes.length).fill(null);
+  for(let i=period; i<closes.length; i++){
+    let gains=0, losses=0;
+    for(let j=i-period+1; j<=i; j++){
+      const diff = closes[j]-closes[j-1];
+      if(diff>=0) gains+=diff; else losses+=Math.abs(diff);
+    }
+    const avgGain=gains/period, avgLoss=losses/period;
+    out[i] = avgLoss===0 ? 100 : 100-(100/(1+avgGain/avgLoss));
+  }
+  return out;
+}
+function computeRollingKD(bars, period=9){
+  const kArr = new Array(bars.length).fill(null);
+  const dArr = new Array(bars.length).fill(null);
+  let k=50, d=50;
+  for(let i=period-1; i<bars.length; i++){
+    const window = bars.slice(i-period+1, i+1);
+    const highMax = Math.max(...window.map(b=>b.high));
+    const lowMin = Math.min(...window.map(b=>b.low));
+    const close = bars[i].close;
+    const rsv = highMax>lowMin ? (close-lowMin)/(highMax-lowMin)*100 : 50;
+    k = (2/3)*k + (1/3)*rsv;
+    d = (2/3)*d + (1/3)*k;
+    kArr[i]=k; dArr[i]=d;
+  }
+  return { k: kArr, d: dArr };
+}
+function computeRollingMACD(closes){
+  const ema12 = computeEMASeries(closes,12);
+  const ema26 = computeEMASeries(closes,26);
+  const macdLine = closes.map((_,i) => (ema12[i]!=null && ema26[i]!=null) ? ema12[i]-ema26[i] : null);
+  const startIdx = macdLine.findIndex(v=>v!=null);
+  const signalFull = new Array(closes.length).fill(null);
+  if(startIdx !== -1){
+    const validMacd = macdLine.slice(startIdx);
+    const sig = computeEMASeries(validMacd, 9);
+    for(let i=0;i<sig.length;i++) signalFull[startIdx+i] = sig[i];
+  }
+  const hist = closes.map((_,i) => (macdLine[i]!=null && signalFull[i]!=null) ? macdLine[i]-signalFull[i] : null);
+  return { macd: macdLine, signal: signalFull, hist };
+}
+function percentileRank(series, currentValue){
+  const valid = series.filter(v => v != null);
+  if(valid.length < 20 || currentValue == null) return null;
+  const below = valid.filter(v => v <= currentValue).length;
+  return (below/valid.length)*100;
+}
+
+/* ============ 回測：用「近2年、只用當下已知資料」重跑同一套短線規則，看歷史上準不準 ============ */
+function runBacktest(bars){
+  const n = bars.length;
+  if(n < 280) return null;
+  const closes = bars.map(b=>b.close);
+  const ma20 = computeRollingSMA(closes,20);
+  const ma60 = computeRollingSMA(closes,60);
+  const rsiSeries = computeRollingRSI(closes,14);
+  const kd = computeRollingKD(bars,9);
+  const macd = computeRollingMACD(closes);
+
+  const buckets = {};
+  for(let i=100; i<n-21; i+=3){
+    if(ma20[i]==null||ma60[i]==null||rsiSeries[i]==null||kd.k[i]==null||macd.hist[i]==null) continue;
+    const last = closes[i];
+    const regWindow = closes.slice(Math.max(0,i-19), i+1);
+    const reg = linearRegression(regWindow);
+
+    // 趨勢/動能票：MA、線性回歸、MACD 三個同性質指標合併成一票，避免重複計分
+    let trendVotes = (last>ma20[i]?1:-1) + (macd.hist[i]>0?1:-1) + (reg ? (reg.slope>0?1:-1) : 0);
+    const trendSignal = trendVotes>=2 ? 1 : (trendVotes<=-2 ? -1 : 0);
+
+    // 均值回歸票：RSI、KD 合併成一票
+    let mrVotes = (rsiSeries[i]<30?1:(rsiSeries[i]>70?-1:0)) + (kd.k[i]<20?1:(kd.k[i]>80?-1:0));
+    const mrSignal = mrVotes>=1 ? 1 : (mrVotes<=-1 ? -1 : 0);
+
+    // 型態票
+    const patSlice = bars.slice(0, i+1);
+    const pattern = detectCandlePattern(patSlice);
+    let patVote = 0;
+    if(pattern && pattern.includes('多頭吞噬')) patVote = 1;
+    else if(pattern && pattern.includes('空頭吞噬')) patVote = -1;
+
+    const score = trendSignal + mrSignal + patVote;
+    const label = score>=2 ? '買進訊號' : (score<=-2 ? '賣出訊號' : (score===1 ? '偏多' : (score===-1 ? '偏空' : '中立')));
+
+    const fwd5 = (closes[i+5]-last)/last;
+    const fwd20 = (closes[i+20]-last)/last;
+    if(!buckets[label]) buckets[label] = { sum5:0, sum20:0, win5:0, win20:0, n:0 };
+    buckets[label].sum5 += fwd5; buckets[label].sum20 += fwd20;
+    if(fwd5>0) buckets[label].win5++;
+    if(fwd20>0) buckets[label].win20++;
+    buckets[label].n++;
+  }
+  return { buckets, rsiSeries, kdSeries: kd };
+}
+
+function renderBacktest(bt){
+  const panel = document.getElementById('backtestPanel');
+  if(!bt || !bt.buckets || Object.keys(bt.buckets).length === 0){
+    panel.innerHTML = `<h2>策略回測</h2><div class="empty">歷史資料不足（需要約1年以上的每日K線），無法回測</div>`;
+    return;
+  }
+  const order = ['買進訊號','偏多','中立','偏空','賣出訊號'];
+  const rows = order.filter(k => bt.buckets[k]).map(label => {
+    const b = bt.buckets[label];
+    const avg5 = (b.sum5/b.n*100).toFixed(2);
+    const avg20 = (b.sum20/b.n*100).toFixed(2);
+    const win5 = (b.win5/b.n*100).toFixed(0);
+    const win20 = (b.win20/b.n*100).toFixed(0);
+    return `<tr><td>${label}</td><td>${b.n}</td><td>${avg5}%</td><td>${win5}%</td><td>${avg20}%</td><td>${win20}%</td></tr>`;
+  }).join('');
+  panel.innerHTML = `
+    <h2>策略回測 <span class="note">近2年、每3個交易日取樣一次</span></h2>
+    <table>
+      <thead><tr><th>訊號</th><th>樣本數</th><th>平均5日報酬</th><th>5日勝率</th><th>平均20日報酬</th><th>20日勝率</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="whale-date">這是把「趨勢/動能」「均值回歸(RSI+KD)」「K線型態」三票加總的短線規則，套到這檔股票近2年的歷史資料上重跑一遍，看過去這個訊號出現後，實際5天/20天後的報酬與勝率如何。樣本數太少（例如個位數）時，統計上不具參考力；選擇權籌碼與基本面資料無法取得歷史值，未納入回測。這是「這套規則在這檔股票的歷史表現」，不代表未來會重演。</div>
+  `;
+}
+
+async function loadBacktestData(ticker, apiKey){
+  const panel = document.getElementById('backtestPanel');
+  panel.innerHTML = `<h2>策略回測</h2><div class="empty">正在抓取近2年歷史資料並回測中…</div>`;
+  try{
+    let bars2y;
+    if(apiKey){
+      bars2y = await fetchCandlesTwelveData(ticker, apiKey, 500);
+    } else {
+      const data = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=2y&interval=1d`, 15000);
+      const res = data?.chart?.result?.[0];
+      if(!res) throw new Error('查無歷史資料');
+      const ts = res.timestamp || [];
+      const q = res.indicators.quote[0];
+      bars2y = ts.map((t,i)=>({ time:t, open:q.open[i], high:q.high[i], low:q.low[i], close:q.close[i], volume: q.volume?q.volume[i]:null }))
+        .filter(b=>b.open!=null && b.close!=null);
+    }
+    const bt = runBacktest(bars2y);
+    renderBacktest(bt);
+    return bt;
+  }catch(e){
+    panel.innerHTML = `<h2>策略回測</h2><div class="empty">回測資料取得失敗：${e.message}</div>`;
+    return null;
+  }
+}
+
+async function runBacktestForCurrentTicker(ticker){
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const bt = await loadBacktestData(ticker, apiKey);
+  const panel = document.getElementById('backtestPanel');
+  const rerun = document.createElement('div');
+  rerun.className = 'whale-controls';
+  rerun.style.marginTop = '10px';
+  rerun.innerHTML = `<button id="runBacktestBtn2">重新執行回測</button>`;
+  panel.appendChild(rerun);
+
+  // 回測完成後，在「核心指標模組」補上相對這檔股票自己歷史分布的百分位校正（純資訊附註，不會回頭改動已經算好的短線分數）
+  if(bt && bt.rsiSeries){
+    const lastRsi = [...bt.rsiSeries].reverse().find(v=>v!=null);
+    const lastK = bt.kdSeries && [...bt.kdSeries.k].reverse().find(v=>v!=null);
+    const rsiPct = percentileRank(bt.rsiSeries, lastRsi);
+    const kPct = lastK!=null ? percentileRank(bt.kdSeries.k, lastK) : null;
+    const stepPanel = document.getElementById('stepCheckPanel');
+    if(rsiPct != null && stepPanel){
+      const existing = stepPanel.querySelector('.percentile-note');
+      if(existing) existing.remove();
+      const note = document.createElement('div');
+      note.className = 'signal-box percentile-note';
+      note.innerHTML = `<strong>百分位校正（相對這檔股票自己近2年的歷史分布，不是固定30/70門檻）：</strong>目前RSI14位於自己歷史的第 ${rsiPct.toFixed(0)} 百分位${kPct!=null?`，KD-K位於第 ${kPct.toFixed(0)} 百分位`:''}。同樣是「RSI=70」，對長期高波動股票可能只是歷史中位數，對低波動股票可能已經是歷史極端值——這裡改用個股自己的歷史排名判斷相對超買超賣，第10百分位以下算相對超賣、第90百分位以上算相對超買，比固定門檻更貼近這檔股票自己的波動特性。「短線／長線觀察摘要」的計分仍使用固定30/70門檻，這裡僅供交叉比對參考。`;
+      stepPanel.appendChild(note);
+    }
+  }
+}
+
+/* ============ 選用：Twelve Data API（若使用者自己填金鑰，直接呼叫、不需CORS代理，比免費代理穩定） ============ */
+async function fetchCandlesTwelveData(ticker, apiKey, outputsize=260){
+  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(ticker)}&interval=1day&outputsize=${outputsize}&apikey=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Twelve Data HTTP '+res.status);
+  const data = await res.json();
+  if(data.status === 'error') throw new Error('Twelve Data: '+(data.message||'查詢失敗'));
+  const values = data.values || [];
+  return values.map(v => ({
+    time: Math.floor(new Date(v.datetime).getTime()/1000),
+    open: parseFloat(v.open), high: parseFloat(v.high), low: parseFloat(v.low), close: parseFloat(v.close),
+    volume: v.volume ? parseFloat(v.volume) : null
+  })).reverse();
+}
+
 // Step 1：大勢趨勢（用大盤 ^GSPC 的 EMA50/200 判斷牛熊，順勢而為的參考基準）
 async function loadMarketTrendStep(){
   try{
@@ -671,11 +1132,13 @@ function computeSupportResistance(bars){
 function positionStep(bars){
   const closes = bars.map(b=>b.close);
   const rsi = computeRSI(closes, 14);
+  const kd = computeKD(bars, 9);
+  const macd = computeMACD(closes);
   const { support, resistance } = computeSupportResistance(bars);
   const last = closes[closes.length-1];
   const nearSupport = (last - support)/last < 0.03;
   const nearResistance = (resistance - last)/last < 0.03;
-  return { rsi, support, resistance, last, nearSupport, nearResistance };
+  return { rsi, kd, macd, support, resistance, last, nearSupport, nearResistance };
 }
 
 // Step 4：K線型態辨識＋成交量驗證（該檔股票自己的最近K線）
@@ -710,32 +1173,32 @@ function volumeConfirmation(bars){
 
 function renderStepCheck(bars, trendStep, breadthStep){
   const panel = document.getElementById('stepCheckPanel');
+  const mom = bars ? computeMomentum(bars) : null;
   const pos = bars ? positionStep(bars) : null;
   const pattern = bars ? detectCandlePattern(bars) : null;
   const volConf = bars ? volumeConfirmation(bars) : null;
 
-  const step1Html = trendStep
-    ? `<strong>Step 1・大勢趨勢（S&amp;P500，EMA50/200）：</strong>${trendStep.bull ? '多頭市場（EMA50在EMA200之上）' : '空頭市場（EMA50在EMA200之下）'}${trendStep.crossEvent ? `，且近20個交易日內剛出現「${trendStep.crossEvent}」` : ''}。EMA50=${fmtNum(trendStep.e50)}，EMA200=${fmtNum(trendStep.e200)}，大盤現價=${fmtNum(trendStep.last)}。順勢而為的參考：大環境偏${trendStep.bull?'多':'空'}時，個股的多方/空方訊號通常較容易延續。`
-    : `<strong>Step 1・大勢趨勢：</strong>大盤資料暫時無法取得。`;
+  const mod1Html = `<strong>①圖表基底・Candlestick（K線）：</strong>上方K線圖是所有指標判讀的原始資料來源——開盤、收盤、最高、最低四個價位，紅綠代表當天漲跌。後面三個模組（廣度、趨勢、動量）都是從這張圖的價格與成交量算出來的。`;
 
-  const step2Html = breadthStep
-    ? `<strong>Step 2・市場廣度（代理指標，非官方ADL/騰落指標）：</strong>近3個月等權重ETF(RSP) ${fmtPct(breadthStep.rspRet)} vs. 大盤(SPY) ${fmtPct(breadthStep.spyRet)}；小型股(IWM) ${fmtPct(breadthStep.iwmRet)} vs. 大盤 ${fmtPct(breadthStep.spyRet)}。${breadthStep.healthy ? '等權重與小型股表現不輸大盤，顯示上漲有較廣泛的個股參與，廣度健康' : '等權重與小型股落後大盤，顯示漲勢集中在少數權值股，廣度偏弱'}。（免費資料無法取得真正的騰落家數，這裡用相對表現當代理指標，僅供參考）`
-    : `<strong>Step 2・市場廣度：</strong>廣度代理指標資料暫時無法取得。`;
+  const mod2Html = trendStep || breadthStep
+    ? `<strong>②大盤廣度・MSI概念（麥克連綜合指標）：</strong>${trendStep ? `S&amp;P500 目前為${trendStep.bull?'多頭排列':'空頭排列'}（EMA50 ${fmtNum(trendStep.e50)} ${trendStep.bull?'>':'<'} EMA200 ${fmtNum(trendStep.e200)}）${trendStep.crossEvent ? `，近20日內剛出現「${trendStep.crossEvent}」` : ''}。` : ''}${breadthStep ? `廣度部分：等權重ETF(RSP) ${fmtPct(breadthStep.rspRet)} vs. 大盤(SPY) ${fmtPct(breadthStep.spyRet)}，小型股(IWM) ${fmtPct(breadthStep.iwmRet)}，${breadthStep.healthy ? '不輸大盤，顯示上漲有廣泛個股參與、廣度健康' : '落後大盤，顯示漲勢集中在少數權值股、廣度偏弱'}。` : ''}<br><span style="color:var(--muted);font-size:11.5px;">說明：真正的MSI（麥克連綜合指標）是用全市場「上漲家數－下跌家數」的振盪值累積計算，需要交易所逐日的騰落家數，免費管道拿不到即時資料；這裡改用「等權重／小型股 vs. 大盤」的相對強弱當替代性廣度代理，邏輯類似但不是官方MSI數字，這點請注意。</span>`
+    : `<strong>②大盤廣度・MSI概念：</strong>資料暫時無法取得。`;
 
-  const step3Html = pos
-    ? `<strong>Step 3・支撐壓力與動量（RSI14，近期關鍵價位）：</strong>RSI14 = ${fmtNum(pos.rsi,1)}（${pos.rsi>70?'超買區':(pos.rsi<30?'超賣區':'中性區間')}）。近60個交易日關鍵區間：支撐約 ${fmtNum(pos.support)}，壓力約 ${fmtNum(pos.resistance)}，現價 ${fmtNum(pos.last)}${pos.nearSupport?'，目前貼近支撐位':(pos.nearResistance?'，目前貼近壓力位':'，目前介於支撐與壓力之間')}。`
-    : `<strong>Step 3・支撐壓力與動量：</strong>資料不足，無法判讀。`;
+  const macd = pos ? pos.macd : null;
+  const mod3Html = (mom || macd)
+    ? `<strong>③趨勢確認・MA + MACD：</strong>${mom ? `價格${mom.aboveMa20 && mom.aboveMa60 ? '站上20日與60日均線，短中期呈多頭排列' : (!mom.aboveMa20 && !mom.aboveMa60 ? '跌破20日與60日均線，短中期呈空頭排列' : '介於20日與60日均線之間，方向未明（盤整）')}。` : ''}${macd ? `MACD：DIF=${fmtNum(macd.macd,3)}，訊號線=${fmtNum(macd.signal,3)}，柱狀圖=${fmtNum(macd.histogram,3)}（${macd.histogram>0?'DIF在訊號線之上，動能偏多':'DIF在訊號線之下，動能偏空'}）${macd.crossEvent ? `，近期出現「${macd.crossEvent}」` : ''}。` : 'MACD資料不足。'}`
+    : `<strong>③趨勢確認・MA + MACD：</strong>資料不足，無法判讀。`;
 
-  const step4Html = pattern
-    ? `<strong>Step 4・K線型態＋成交量驗證：</strong>最近K線型態判讀為「${pattern}」。${volConf ? `最新一根K棒成交量約為近20日均量的 ${fmtNum(volConf.ratio,2)} 倍，${volConf.confirmed ? '量能明顯放大，型態訊號的可信度較高' : '量能未明顯放大，型態訊號需要更謹慎看待，建議等待進一步確認'}` : '成交量資料不足，無法驗證量能是否配合'}。`
-    : `<strong>Step 4・K線型態＋成交量驗證：</strong>資料不足，無法判讀。`;
+  const mod4Html = pos
+    ? `<strong>④動量時機・RSI + KD：</strong>RSI14 = ${fmtNum(pos.rsi,1)}（${pos.rsi>70?'超買區':(pos.rsi<30?'超賣區':'中性區間')}）；${pos.kd ? `KD(9)：K=${fmtNum(pos.kd.k,1)}，D=${fmtNum(pos.kd.d,1)}（${pos.kd.k>80?'超買區':(pos.kd.k<20?'超賣區':'中性區間')}）。` : 'KD資料不足。'}近60個交易日關鍵價位：支撐約${fmtNum(pos.support)}，壓力約${fmtNum(pos.resistance)}，現價${fmtNum(pos.last)}${pos.nearSupport?'，貼近支撐位':(pos.nearResistance?'，貼近壓力位':'，介於支撐與壓力之間')}。${pattern ? `K線型態：「${pattern}」${volConf ? `，最新量能為近20日均量的${fmtNum(volConf.ratio,2)}倍（${volConf.confirmed?'放大確認':'未明顯放大'}）` : ''}。` : ''}`
+    : `<strong>④動量時機・RSI + KD：</strong>資料不足，無法判讀。`;
 
   panel.innerHTML = `
-    <h2>交易者四步驟檢查 <span class="note">大勢 → 廣度 → 位置動量 → 時機</span></h2>
-    <div class="signal-box">${step1Html}</div>
-    <div class="signal-box">${step2Html}</div>
-    <div class="signal-box">${step3Html}</div>
-    <div class="signal-box">${step4Html}</div>
+    <h2>核心指標模組 <span class="note">圖表基底 → 大盤廣度 → 趨勢確認 → 動量時機</span></h2>
+    <div class="signal-box">${mod1Html}</div>
+    <div class="signal-box">${mod2Html}</div>
+    <div class="signal-box">${mod3Html}</div>
+    <div class="signal-box">${mod4Html}</div>
   `;
 
   return { trendStep, breadthStep, pos, pattern, volConf };
@@ -748,6 +1211,20 @@ function ratingFromScore(score){
   if(score <= -3) return { label:'強力賣出訊號', cls:'down' };
   if(score <= -1) return { label:'賣出訊號', cls:'down' };
   return { label:'中立', cls:'flat' };
+}
+
+function renderSignalCard(ticker, shortRating, longRating, mom){
+  const card = document.getElementById('signalCard');
+  if(!mom){ card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  card.innerHTML = `
+    <div class="signal-card-row">
+      <span style="font-family:var(--mono);font-weight:600;font-size:14px;">${ticker}　${fmtNum(mom.last)}</span>
+      <div class="signal-card-item"><span class="signal-card-label">短線</span><span class="badge ${shortRating.cls}">${shortRating.label}</span></div>
+      <div class="signal-card-item"><span class="signal-card-label">長線</span><span class="badge ${longRating.cls}">${longRating.label}</span></div>
+    </div>
+    <div class="signal-card-note">規則導向的量化訊號，詳細理由與選擇權策略見下方「總覽」分頁的短線／長線觀察摘要。</div>
+  `;
 }
 
 function pickOptionStrategy(shortCls, ivLevel){
@@ -773,68 +1250,85 @@ function renderStrategy(ticker, chartRes, fund, opt, regModel, stepResult){
     return;
   }
 
-  // ---- 短線技術訊號燈 ----
-  let shortScore = 0;
-  const shortReasons = [];
-  if(mom){
-    if(mom.aboveMa20){ shortScore += 1; shortReasons.push('價格站上20日均線（+1，偏多）'); }
-    else { shortScore -= 1; shortReasons.push('價格跌破20日均線（-1，偏空）'); }
-    if(mom.shortChangePct >= 0){ shortScore += 1; shortReasons.push(`近一個月上漲 ${fmtPct(mom.shortChangePct)}（+1，偏多）`); }
-    else { shortScore -= 1; shortReasons.push(`近一個月下跌 ${fmtPct(Math.abs(mom.shortChangePct))}（-1，偏空）`); }
-  }
-  if(regModel && regModel.shortReg){
-    if(regModel.shortReg.slope > 0){ shortScore += 1; shortReasons.push('近20日線性回歸斜率為正（+1，偏多）'); }
-    else { shortScore -= 1; shortReasons.push('近20日線性回歸斜率為負（-1，偏空）'); }
-  }
-  if(opt){
-    if(opt.sentiment === 'up'){ shortScore += 1; shortReasons.push('選擇權籌碼偏多，Call未平倉較多（+1，偏多）'); }
-    else if(opt.sentiment === 'down'){ shortScore -= 1; shortReasons.push('選擇權籌碼偏空，Put未平倉較多（-1，偏空）'); }
-  }
-  if(stepResult && stepResult.pos && stepResult.pos.rsi != null){
-    if(stepResult.pos.rsi < 30){ shortScore += 1; shortReasons.push(`RSI14=${fmtNum(stepResult.pos.rsi,1)}，處於超賣區，短線有反彈機會（+1，偏多）`); }
-    else if(stepResult.pos.rsi > 70){ shortScore -= 1; shortReasons.push(`RSI14=${fmtNum(stepResult.pos.rsi,1)}，處於超買區，短線有拉回風險（-1，偏空）`); }
-  }
+  // ---- 短線技術訊號燈：四票制，同性質指標合併成一票避免重複計分 ----
+  // 票1：趨勢/動能（MA20 + 線性回歸 + MACD 三個同質指標合併，避免各自加分虛增信心）
+  let trendVotesRaw = 0, trendVoteCount = 0;
+  const trendDetail = [];
+  if(mom){ trendVoteCount++; const v = mom.aboveMa20?1:-1; trendVotesRaw+=v; trendDetail.push(`站上20日均線：${v>0?'是':'否'}`); }
+  if(regModel && regModel.shortReg){ trendVoteCount++; const v = regModel.shortReg.slope>0?1:-1; trendVotesRaw+=v; trendDetail.push(`近20日回歸斜率：${v>0?'正':'負'}`); }
+  if(stepResult && stepResult.pos && stepResult.pos.macd){ trendVoteCount++; const v = stepResult.pos.macd.histogram>0?1:-1; trendVotesRaw+=v; trendDetail.push(`MACD柱狀圖：${v>0?'正':'負'}`); }
+  const trendVote = trendVoteCount>0 ? (trendVotesRaw>=2?1:(trendVotesRaw<=-2?-1:0)) : 0;
+
+  // 票2：均值回歸（RSI + KD 合併成一票）
+  let mrVotesRaw = 0, mrVoteCount = 0;
+  const mrDetail = [];
+  if(stepResult && stepResult.pos && stepResult.pos.rsi != null){ mrVoteCount++; const v = stepResult.pos.rsi<30?1:(stepResult.pos.rsi>70?-1:0); mrVotesRaw+=v; mrDetail.push(`RSI14=${fmtNum(stepResult.pos.rsi,1)}`); }
+  if(stepResult && stepResult.pos && stepResult.pos.kd){ mrVoteCount++; const v = stepResult.pos.kd.k<20?1:(stepResult.pos.kd.k>80?-1:0); mrVotesRaw+=v; mrDetail.push(`KD(9) K=${fmtNum(stepResult.pos.kd.k,1)}`); }
+  const mrVote = mrVoteCount>0 ? (mrVotesRaw>=1?1:(mrVotesRaw<=-1?-1:0)) : 0;
+
+  // 票3：選擇權籌碼
+  let chipVote = 0;
+  if(opt){ chipVote = opt.sentiment==='up'?1:(opt.sentiment==='down'?-1:0); }
+
+  // 票4：K線型態＋成交量
+  let patVote = 0;
   if(stepResult && stepResult.pattern){
     const volOk = stepResult.volConf && stepResult.volConf.confirmed;
-    if(stepResult.pattern.includes('多頭吞噬')){ shortScore += (volOk?1:1); shortReasons.push(`K線出現多頭吞噬${volOk?'且量能放大確認':''}（+1，偏多）`); }
-    else if(stepResult.pattern.includes('空頭吞噬')){ shortScore -= 1; shortReasons.push(`K線出現空頭吞噬${volOk?'且量能放大確認':''}（-1，偏空）`); }
+    if(stepResult.pattern.includes('多頭吞噬')) patVote = 1;
+    else if(stepResult.pattern.includes('空頭吞噬')) patVote = -1;
+    if(patVote !== 0 && !volOk){ /* 量能未確認，型態票仍算但會在理由中註明可信度較低 */ }
   }
+
+  const shortScore = trendVote + mrVote + chipVote + patVote;
+  const shortReasons = [
+    `趨勢/動能票（MA20+回歸斜率+MACD合併判讀）：${trendVote>0?'+1 偏多':(trendVote<0?'-1 偏空':'0 中性')}（${trendDetail.join('、')||'資料不足'}）`,
+    `均值回歸票（RSI+KD合併判讀）：${mrVote>0?'+1 偏多（超賣）':(mrVote<0?'-1 偏空（超買）':'0 中性')}（${mrDetail.join('、')||'資料不足'}）`,
+    `選擇權籌碼票：${chipVote>0?'+1 偏多':(chipVote<0?'-1 偏空':'0 中性或無資料')}${opt?`（${opt.sentimentLabel}）`:''}`,
+    `K線型態票：${patVote>0?'+1 偏多':(patVote<0?'-1 偏空':'0 無明顯型態')}${stepResult&&stepResult.pattern?`（${stepResult.pattern}${stepResult.volConf&&stepResult.volConf.confirmed?'，量能已確認':'，量能未放大確認，可信度較低'}）`:''}`,
+  ];
   const shortRating = ratingFromScore(shortScore);
 
-  // ---- 長線技術/基本面訊號燈 ----
-  let longScore = 0;
-  const longReasons = [];
-  if(mom){
-    if(mom.aboveMa60){ longScore += 1; longReasons.push('價格站上60日均線（+1，偏多）'); }
-    else { longScore -= 1; longReasons.push('價格跌破60日均線（-1，偏空）'); }
-    if(mom.longChangePct >= 0){ longScore += 1; longReasons.push(`近6個月上漲 ${fmtPct(mom.longChangePct)}（+1，偏多）`); }
-    else { longScore -= 1; longReasons.push(`近6個月下跌 ${fmtPct(Math.abs(mom.longChangePct))}（-1，偏空）`); }
-  }
-  if(regModel && regModel.longReg){
-    if(regModel.longReg.slope > 0){ longScore += 1; longReasons.push('中期線性回歸斜率為正（+1，偏多）'); }
-    else { longScore -= 1; longReasons.push('中期線性回歸斜率為負（-1，偏空）'); }
-  }
-  if(fund && fund.targetMean && mom){
-    if(fund.targetMean > mom.last){ longScore += 1; longReasons.push(`分析師平均目標價 ${fmtNum(fund.targetMean)} 高於現價（+1，偏多）`); }
-    else { longScore -= 1; longReasons.push(`分析師平均目標價 ${fmtNum(fund.targetMean)} 不高於現價（-1，偏空）`); }
-  }
-  if(fund && fund.forwardPE && fund.trailingPE){
-    if(fund.forwardPE < fund.trailingPE){ longScore += 1; longReasons.push(`預估本益比(${fmtNum(fund.forwardPE)})低於目前本益比(${fmtNum(fund.trailingPE)})，市場預期獲利成長（+1，偏多）`); }
-    else { longScore -= 1; longReasons.push(`預估本益比(${fmtNum(fund.forwardPE)})不低於目前本益比(${fmtNum(fund.trailingPE)})，成長預期保守（-1，偏空）`); }
-  }
-  if(fund && (fund.bullishAnalysts || fund.bearishAnalysts)){
-    if(fund.bullishAnalysts > fund.bearishAnalysts){ longScore += 1; longReasons.push(`分析師評等買進方（${fund.bullishAnalysts}）多於賣出方（${fund.bearishAnalysts}）（+1，偏多）`); }
-    else { longScore -= 1; longReasons.push(`分析師評等買進方（${fund.bullishAnalysts}）不多於賣出方（${fund.bearishAnalysts}）（-1，偏空）`); }
-  }
-  if(stepResult && stepResult.trendStep){
-    if(stepResult.trendStep.bull){ longScore += 1; longReasons.push('大盤（S&P500）EMA50在EMA200之上，屬多頭市場，順勢偏多（+1）'); }
-    else { longScore -= 1; longReasons.push('大盤（S&P500）EMA50在EMA200之下，屬空頭市場，順勢偏空（-1）'); }
-  }
-  if(stepResult && stepResult.breadthStep){
-    if(stepResult.breadthStep.healthy){ longScore += 1; longReasons.push('市場廣度代理指標健康（等權重/小型股不輸大盤），上漲基礎較廣（+1）'); }
-    else { longScore -= 1; longReasons.push('市場廣度代理指標偏弱（等權重/小型股落後大盤），上漲集中少數權值股（-1）'); }
-  }
+  // ---- 長線訊號燈：四票制 ----
+  // 票1：總經大盤（市場趨勢 + 廣度合併）
+  let macroVotesRaw = 0, macroVoteCount = 0;
+  const macroDetail = [];
+  if(stepResult && stepResult.trendStep){ macroVoteCount++; const v = stepResult.trendStep.bull?1:-1; macroVotesRaw+=v; macroDetail.push(`大盤${v>0?'多頭':'空頭'}`); }
+  if(stepResult && stepResult.breadthStep){ macroVoteCount++; const v = stepResult.breadthStep.healthy?1:-1; macroVotesRaw+=v; macroDetail.push(`廣度${v>0?'健康':'偏弱'}`); }
+  const macroVote = macroVoteCount>0 ? (macroVotesRaw>=1?1:(macroVotesRaw<=-1?-1:0)) : 0;
+
+  // 票2：個股中期趨勢（MA60 + 6個月漲跌 + 中期回歸斜率合併）
+  let stockTrendRaw = 0, stockTrendCount = 0;
+  const stockTrendDetail = [];
+  if(mom){ stockTrendCount++; const v=mom.aboveMa60?1:-1; stockTrendRaw+=v; stockTrendDetail.push(`60日均線${v>0?'之上':'之下'}`); stockTrendCount++; const v2=mom.longChangePct>=0?1:-1; stockTrendRaw+=v2; stockTrendDetail.push(`近6月${v2>0?'上漲':'下跌'}`); }
+  if(regModel && regModel.longReg){ stockTrendCount++; const v=regModel.longReg.slope>0?1:-1; stockTrendRaw+=v; stockTrendDetail.push(`中期回歸斜率${v>0?'正':'負'}`); }
+  const stockTrendVote = stockTrendCount>0 ? (stockTrendRaw>=2?1:(stockTrendRaw<=-2?-1:0)) : 0;
+
+  // 票3：估值（目標價上行/下行空間 + 預估本益比走勢合併）
+  let valVotesRaw = 0, valVoteCount = 0;
+  const valDetail = [];
+  if(fund && fund.targetMean && mom){ valVoteCount++; const v = fund.targetMean>mom.last?1:-1; valVotesRaw+=v; valDetail.push(`目標價${v>0?'高於':'不高於'}現價`); }
+  if(fund && fund.forwardPE && fund.trailingPE){ valVoteCount++; const v = fund.forwardPE<fund.trailingPE?1:-1; valVotesRaw+=v; valDetail.push(`預估本益比${v>0?'低於':'不低於'}目前本益比`); }
+  const valVote = valVoteCount>0 ? (valVotesRaw>=1?1:(valVotesRaw<=-1?-1:0)) : 0;
+
+  // 票4：分析師評等方向
+  let analystVote = 0;
+  if(fund && (fund.bullishAnalysts || fund.bearishAnalysts)){ analystVote = fund.bullishAnalysts > fund.bearishAnalysts ? 1 : -1; }
+
+  const longScore = macroVote + stockTrendVote + valVote + analystVote;
+  const longReasons = [
+    `總經大盤票（大盤趨勢+市場廣度合併）：${macroVote>0?'+1 偏多':(macroVote<0?'-1 偏空':'0 中性')}（${macroDetail.join('、')||'資料不足'}）`,
+    `個股中期趨勢票（60日均線+6月漲跌+中期回歸合併）：${stockTrendVote>0?'+1 偏多':(stockTrendVote<0?'-1 偏空':'0 中性')}（${stockTrendDetail.join('、')||'資料不足'}）`,
+    `估值票（目標價空間+本益比走勢合併）：${valVote>0?'+1 偏多':(valVote<0?'-1 偏空':'0 中性或無資料')}（${valDetail.join('、')||'資料不足'}）`,
+    `分析師評等票：${analystVote>0?'+1 偏多':(analystVote<0?'-1 偏空':'0 無資料')}${fund&&(fund.bullishAnalysts||fund.bearishAnalysts)?`（買進方${fund.bullishAnalysts} vs 賣出方${fund.bearishAnalysts}）`:''}`,
+  ];
   const longRating = ratingFromScore(longScore);
+  renderSignalCard(ticker, shortRating, longRating, mom);
+
+  // ---- 財報倒數：影響短線訊號可信度、也影響選擇權IV判讀 ----
+  const earningsSoon = fund && fund.earningsInDays != null && fund.earningsInDays >= 0 && fund.earningsInDays <= 7;
+  const earningsNote = earningsSoon
+    ? `<div class="signal-box" style="border-color:var(--down);"><strong>財報倒數提醒：</strong>距離下次財報僅約 ${fund.earningsInDays} 天，技術面訊號在財報前後容易失真、建議降低權重看待；若考慮選擇權策略，現在的隱含波動率可能已經反映財報前的不確定性，財報公布後常見「IV崩塌」（無論漲跌，IV本身會大幅下降），賣方策略的權利金收益可能不如帳面數字吸引人，買方策略也可能因IV下滑而虧損即使方向猜對。</div>`
+    : '';
 
   // ---- 選擇權建議策略 ----
   let ivLevel = 'mid';
@@ -848,16 +1342,25 @@ function renderStrategy(ticker, chartRes, fund, opt, regModel, stepResult){
     optReasons.push('選擇權籌碼資料暫時無法取得，以下策略僅根據技術面訊號推導，未納入隱含波動率判斷');
     optReasons.push(strat.reason);
   }
+  if(earningsSoon){ optReasons.push(`距財報僅${fund.earningsInDays}天，上面這個策略的IV前提可能在財報公布後迅速改變，執行前務必再次確認IV水位與財報日期。`); }
+
+  if(mom){
+    saveSignalHistoryEntry({ date: new Date().toISOString(), ticker, shortLabel: shortRating.label, longLabel: longRating.label, price: mom.last });
+    renderSignalHistoryFor(ticker, mom.last);
+  } else {
+    document.getElementById('signalHistoryPanel').style.display = 'none';
+  }
 
   panel.innerHTML = `
-    <h2>短線／長線觀察摘要 <span class="note">規則導向的量化訊號，非個人化投資建議</span></h2>
-
+    <h2>短線／長線觀察摘要 <span class="note">四票制規則導向訊號，非個人化投資建議</span></h2>
+    ${earningsNote}
     <div class="strategy-block">
       <div class="rating-line">
         <span class="rating-title">短線訊號（約1個月內）</span>
         <span class="badge ${shortRating.cls}">${shortRating.label}</span>
       </div>
       <ul>${shortReasons.map(t=>`<li>${t}</li>`).join('')}</ul>
+
     </div>
 
     <div class="strategy-block">
@@ -885,7 +1388,10 @@ async function runQuery(){
   const raw = document.getElementById('tickerInput').value.trim();
   if(!raw){ setStatus('請輸入股票代號', 'err'); return; }
   const ticker = raw.toUpperCase();
+  const peerRaw = document.getElementById('peerInput').value.trim();
+  const peers = peerRaw ? peerRaw.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,3) : [];
   setStatus('查詢中…（多項資料同時抓取）');
+  document.getElementById('backtestPanel').innerHTML = `<h2>策略回測</h2><div class="empty">回測需要額外抓取近2年歷史資料，比較耗時，所以獨立成按鈕觸發，不會拖慢一般查詢速度</div><div class="whale-controls" style="margin-top:10px;"><button id="runBacktestBtn">執行回測（抓近2年資料，需要額外時間）</button></div>`;
 
   let regModel = null;
   const chartPromise = loadChart(ticker)
@@ -914,6 +1420,12 @@ async function runQuery(){
   const stepResult = renderStepCheck(chartRes ? chartRes.bars : null, trendStepRes, breadthStepRes);
   renderStrategy(ticker, chartRes, fundRes, optionsRes, regModel, stepResult);
 
+  if(peers.length && fundRes){
+    loadPeerComparison(peers, ticker, fundRes.trailingPE, fundRes.forwardPE);
+  } else {
+    document.getElementById('peerPanel').style.display = 'none';
+  }
+
   const ok = !!chartRes;
   if(ok){
     setStatus('已更新：' + ticker + '（' + new Date().toLocaleString('zh-TW') + '）', 'ok');
@@ -923,7 +1435,68 @@ async function runQuery(){
 }
 
 document.getElementById('goBtn').addEventListener('click', runQuery);
+document.getElementById('subBacktest').addEventListener('click', (e) => {
+  if(e.target && (e.target.id === 'runBacktestBtn' || e.target.id === 'runBacktestBtn2')){
+    const t = document.getElementById('tickerInput').value.trim().toUpperCase();
+    if(!t){ setStatus('請先在上面輸入股票代號並查詢一次', 'err'); return; }
+    runBacktestForCurrentTicker(t);
+  }
+});
 document.getElementById('tickerInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') runQuery(); });
+
+/* ============ 同業估值比較（選填） ============ */
+async function loadPeerComparison(peerTickers, baseTicker, basePE, baseFwdPE){
+  const panel = document.getElementById('peerPanel');
+  if(!peerTickers.length){ panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  panel.innerHTML = `<h2>同業估值比較</h2><div class="empty">載入中…</div>`;
+  try{
+    const results = await Promise.all(peerTickers.map(async t => {
+      try{
+        const data = await fetchJson(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(t)}?modules=summaryDetail,price`, 10000);
+        const r = data?.quoteSummary?.result?.[0];
+        return { ticker:t, name: r?.price?.shortName || t, pe: r?.summaryDetail?.trailingPE?.raw, fwdPe: r?.summaryDetail?.forwardPE?.raw };
+      }catch(e){ return { ticker:t, name:t, pe:null, fwdPe:null }; }
+    }));
+    const rows = [{ ticker: baseTicker, name: baseTicker + '（查詢中股票）', pe: basePE, fwdPe: baseFwdPE }, ...results];
+    panel.innerHTML = `
+      <h2>同業估值比較</h2>
+      <table><thead><tr><th>代號</th><th>本益比(TTM)</th><th>預估本益比</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${r.name}</td><td>${fmtNum(r.pe)}</td><td>${fmtNum(r.fwdPe)}</td></tr>`).join('')}</tbody></table>
+      <div class="whale-date">本益比沒有絕對高低，只有跟同業比才有意義；這裡只比較本益比，沒有調整成長率、獲利品質、資本結構等差異，僅供快速參考。</div>
+    `;
+  }catch(e){
+    panel.innerHTML = `<h2>同業估值比較</h2><div class="empty">取得失敗：${e.message}</div>`;
+  }
+}
+
+/* ============ 訊號歷史紀錄（存在瀏覽器localStorage，累積你自己的track record） ============ */
+const SIGNAL_HISTORY_KEY = 'stockDashboardSignalHistory';
+function loadSignalHistoryStore(){
+  try{ return JSON.parse(localStorage.getItem(SIGNAL_HISTORY_KEY) || '[]'); }catch(e){ return []; }
+}
+function saveSignalHistoryEntry(entry){
+  try{
+    const arr = loadSignalHistoryStore();
+    arr.push(entry);
+    while(arr.length > 300) arr.shift();
+    localStorage.setItem(SIGNAL_HISTORY_KEY, JSON.stringify(arr));
+  }catch(e){ /* localStorage不可用時安靜略過，不影響其他功能 */ }
+}
+function renderSignalHistoryFor(ticker, currentPrice){
+  const panel = document.getElementById('signalHistoryPanel');
+  const all = loadSignalHistoryStore().filter(e => e.ticker === ticker);
+  if(!all.length){ panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const rows = all.slice(-10).reverse().map(e => {
+    const ret = (currentPrice && e.price) ? (((currentPrice-e.price)/e.price)*100).toFixed(2)+'%' : '—';
+    return `<tr><td>${e.date.slice(0,10)}</td><td>${e.shortLabel}</td><td>${e.longLabel}</td><td>${fmtNum(e.price)}</td><td>${ret}</td></tr>`;
+  }).join('');
+  panel.innerHTML = `
+    <h2>此代號的歷史訊號紀錄 <span class="note">存在你瀏覽器的localStorage，換裝置或清瀏覽器資料會消失</span></h2>
+    <table><thead><tr><th>查詢日期</th><th>短線訊號</th><th>長線訊號</th><th>當時價格</th><th>至今報酬</th></tr></thead><tbody>${rows}</tbody></table>
+  `;
+}
 
 /* ============ 大戶籌碼：13F 持股佔比 ============ */
 async function fetchHoldingsMap(cikNum, accession){
@@ -954,11 +1527,10 @@ async function fetchHoldingsMap(cikNum, accession){
   return { map, total };
 }
 
-async function loadWhale13F(){
-  const key = document.getElementById('whaleSelect').value;
+async function loadWhale13F(key){
   const info = FUND_MANAGERS[key];
-  const area = document.getElementById('whalePieArea');
-  area.innerHTML = '<div class="empty">載入中…（會抓最近兩期13F做比對，檔案較大，可能需要15-30秒）</div>';
+  const area = document.getElementById('pie_' + key);
+  area.innerHTML = `<div class="empty">正在向SEC抓取最新申報中…（會抓最近兩期13F做比對，可能需要15-30秒）</div>` + staticFallbackHtml(key);
   try{
     const padded = info.cik.padStart(10,'0');
     const subs = await fetchJson(`https://data.sec.gov/submissions/CIK${padded}.json`, 15000);
@@ -1001,11 +1573,11 @@ async function loadWhale13F(){
 
     renderPie(area, withDelta, curTotal, info.name, periodOfReport, prevPeriod);
   }catch(e){
-    area.innerHTML = `<div class="empty">取得失敗：${e.message}（SEC大型檔案透過免費代理抓取有時會逾時，可再試一次或稍後重試，或切換股票分析頁右上角代理）</div>`;
+    area.innerHTML = staticFallbackHtml(key) + `<div class="whale-date" style="color:var(--down);">即時更新失敗：${e.message}（SEC官方端點透過免費CORS代理時常被擋下或逾時，這不是偶發小問題，以上維持顯示人工彙整的備援快照，日期以快照本身標示為準）</div>`;
   }
 }
 function renderPie(area, items, total, name, periodOfReport, prevPeriod){
-  const colors = ['#1E8E5A','#C6392C','#6B7680','#8FBFA0','#D98E86','#4A7A63','#B23A2E','#3D6E52','#A6ADB3'];
+  const colors = ['#4FD69C','#FF6F61','#9AA7B2','#8FD9BE','#F0A99C','#5FA184','#E08C7D','#3D6E52','#B7C0C7'];
   let acc = 0;
   const stops = items.map((it,i)=>{
     const pct = it.value/total*100;
@@ -1028,7 +1600,6 @@ function renderPie(area, items, total, name, periodOfReport, prevPeriod){
     <div class="whale-date">${prevPeriod ? `增減幅度為與上一期申報（${prevPeriod}）比對持股佔比的變化，pt代表百分點差；「新進」代表上一期未持有` : '查無上一期申報可比對，僅顯示本期佔比'}</div>
   `;
 }
-document.getElementById('whaleLoadBtn').addEventListener('click', loadWhale13F);
 
 /* ============ 川普即時動向（無結構化持股資料，改用政策新聞觀察風向） ============ */
 async function loadTrumpSentiment(){
@@ -1043,6 +1614,20 @@ async function loadTrumpSentiment(){
   }
 }
 document.getElementById('trumpNewsBtn').addEventListener('click', loadTrumpSentiment);
+
+/* ============ Pelosi家族即時動向（申報有延遲，用新聞補即時性） ============ */
+async function loadPelosiSentiment(){
+  const area = document.getElementById('pelosiNewsArea');
+  area.innerHTML = '<div class="empty">載入中…</div>';
+  try{
+    const items = await fetchNewsHeadlines('Nancy Pelosi OR Paul Pelosi stock trade OR options', 8);
+    if(!items.length) throw new Error('查無新聞');
+    area.innerHTML = renderNewsRows(items) + `<div class="whale-date">這些是近期與Pelosi家族股票交易相關的新聞報導，用來補申報延遲（30–45天）造成的資訊落差；實際交易明細仍以Capitol Trades／QuiverQuant的官方申報連結為準。</div>`;
+  }catch(e){
+    area.innerHTML = `<div class="empty">新聞資料暫時無法取得（${e.message}）</div>`;
+  }
+}
+document.getElementById('pelosiNewsBtn').addEventListener('click', loadPelosiSentiment);
 </script>
 </body>
 </html>
