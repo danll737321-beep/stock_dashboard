@@ -141,6 +141,21 @@
     background:transparent; border:none; cursor:pointer; font-size:15px; padding:6px 8px; line-height:1;
   }
 
+  #favToggleBtn{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--gold); font-size:16px;
+    padding:0 12px; border-radius:3px; cursor:pointer; line-height:1;
+  }
+  #favToggleBtn:hover{ filter:brightness(1.2); }
+  .fav-row{ display:flex; flex-wrap:wrap; gap:6px; margin:-8px 0 16px; }
+  .fav-chip{
+    display:inline-flex; align-items:center; background:var(--panel-2); border:1px solid var(--line);
+    border-radius:14px; overflow:hidden; font-family:var(--mono); font-size:12px;
+  }
+  .fav-chip-go{ background:transparent; border:none; color:var(--gold); cursor:pointer; padding:5px 4px 5px 10px; font-family:var(--mono); font-size:12px; }
+  .fav-chip-go:hover{ text-decoration:underline; }
+  .fav-chip-x{ background:transparent; border:none; color:var(--muted); cursor:pointer; padding:5px 9px 5px 4px; font-size:13px; line-height:1; }
+  .fav-chip-x:hover{ color:var(--down); }
+
   .panel{
     background: var(--panel); border:1px solid var(--line); border-radius:3px; padding: 16px 18px; margin-bottom:16px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.4);
@@ -227,9 +242,11 @@
         <option value="https://corsproxy.io/?url=">代理: corsproxy</option>
         <option value="https://api.codetabs.com/v1/proxy?quest=">代理: codetabs</option>
       </select>
+      <button id="favToggleBtn" title="加入/移除常用代號">☆</button>
       <button id="goBtn">查詢</button>
     </div>
     <div class="ticker-warn" id="tickerWarn" style="display:none;"></div>
+    <div class="fav-row" id="favRow" style="display:none;"></div>
 
     <details class="adv-settings">
       <summary>進階設定（Twelve Data API金鑰／同業比較，選填）</summary>
@@ -579,11 +596,19 @@ function altHostUrl(url){
 }
 async function fetchOnce(fullUrl, timeoutMs, asText){
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  let timedOut = false;
+  const t = setTimeout(() => { timedOut = true; ctrl.abort(); }, timeoutMs);
   try{
     const res = await fetch(fullUrl, { signal: ctrl.signal });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     return asText ? await res.text() : await res.json();
+  } catch(e){
+    // AbortError在不同瀏覽器的原生訊息不一致（例如「signal is aborted without reason」），
+    // 直接顯示給使用者看不知所云，這裡統一改成看得懂的逾時說明
+    if(timedOut || e.name === 'AbortError'){
+      throw new Error(`逾時（超過${(timeoutMs/1000).toFixed(0)}秒無回應）`);
+    }
+    throw e;
   } finally {
     clearTimeout(t);
   }
@@ -632,6 +657,29 @@ function fmtBig(n){
   return fmtNum(n);
 }
 
+/* ============ 請求節流快取：短時間內重複查同一份資料就不重打API，降低免費代理/Twelve Data額度消耗 ============
+   存在sessionStorage（分頁關閉就清空，不會用到隔夜的舊資料），依資料更新頻率給不同TTL：
+   大盤趨勢/廣度這類「每個查詢都共用、但幾分鐘內不太會變」的資料給長一點的TTL，個股資料給短一點。 */
+function cacheGet(key){
+  try{
+    const raw = sessionStorage.getItem('cache:'+key);
+    if(!raw) return undefined;
+    const { exp, value } = JSON.parse(raw);
+    if(Date.now() > exp) return undefined;
+    return value;
+  }catch(e){ return undefined; }
+}
+function cacheSet(key, value, ttlMs){
+  try{ sessionStorage.setItem('cache:'+key, JSON.stringify({ exp: Date.now()+ttlMs, value })); }catch(e){ /* 容量滿或無法使用時安靜略過，不影響功能 */ }
+}
+async function withCache(key, ttlMs, fetchFn){
+  const cached = cacheGet(key);
+  if(cached !== undefined) return cached;
+  const value = await fetchFn();
+  cacheSet(key, value, ttlMs);
+  return value;
+}
+
 /* ============ 股票代號自動完成 + 有效性檢查 ============ */
 let tickerSuggestState = { items: [], activeIdx: -1, lastQuery: '', debounceTimer: null, lastVerifiedQuery: '', lastVerifiedFound: true };
 function debounce(fn, ms){
@@ -641,15 +689,17 @@ function debounce(fn, ms){
   };
 }
 async function searchTickerSuggestions(q){
-  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=6&newsCount=0`;
-  const data = await fetchJson(url, 6000);
-  const quotes = (data && data.quotes) || [];
-  return quotes.filter(x => x.symbol).map(x => ({
-    symbol: x.symbol,
-    name: x.shortname || x.longname || '',
-    exch: x.exchDisp || x.exchange || '',
-    type: x.quoteType || ''
-  }));
+  return withCache(`search:${q.toLowerCase()}`, 60*60*1000, async () => {
+    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=6&newsCount=0`;
+    const data = await fetchJson(url, 6000);
+    const quotes = (data && data.quotes) || [];
+    return quotes.filter(x => x.symbol).map(x => ({
+      symbol: x.symbol,
+      name: x.shortname || x.longname || '',
+      exch: x.exchDisp || x.exchange || '',
+      type: x.quoteType || ''
+    }));
+  });
 }
 function hideTickerSuggest(){
   const box = document.getElementById('tickerSuggest');
@@ -736,6 +786,60 @@ function checkTickerValidityBeforeQuery(ticker){
   }
 }
 
+/* ============ 常用代號：存在localStorage，搜尋列下方顯示快速按鈕，不用每次重打代號 ============ */
+const FAV_TICKERS_KEY = 'stockDashboardFavTickers';
+function loadFavTickers(){
+  try{ return JSON.parse(localStorage.getItem(FAV_TICKERS_KEY) || '[]'); }catch(e){ return []; }
+}
+function saveFavTickers(arr){
+  try{ localStorage.setItem(FAV_TICKERS_KEY, JSON.stringify(arr)); }catch(e){ /* localStorage不可用時安靜略過 */ }
+}
+function isFavTicker(ticker){ return loadFavTickers().includes(ticker); }
+function toggleFavTicker(ticker){
+  let arr = loadFavTickers();
+  if(arr.includes(ticker)){
+    arr = arr.filter(t => t !== ticker);
+  } else {
+    arr.push(ticker);
+    if(arr.length > 12) arr.shift(); // 最多留12個，超過就把最舊加入的擠掉
+  }
+  saveFavTickers(arr);
+  renderFavRow();
+  updateFavToggleBtn(ticker);
+}
+function renderFavRow(){
+  const row = document.getElementById('favRow');
+  const arr = loadFavTickers();
+  if(!arr.length){ row.innerHTML = ''; row.style.display = 'none'; return; }
+  row.style.display = 'flex';
+  row.innerHTML = arr.map(t =>
+    `<span class="fav-chip"><button class="fav-chip-go" data-ticker="${t}">${t}</button><button class="fav-chip-x" data-ticker="${t}" title="從常用移除">×</button></span>`
+  ).join('');
+}
+function updateFavToggleBtn(ticker){
+  const btn = document.getElementById('favToggleBtn');
+  if(!btn) return;
+  if(!ticker){ btn.textContent = '☆'; btn.title = '先輸入代號再加入常用'; return; }
+  const fav = isFavTicker(ticker);
+  btn.textContent = fav ? '★' : '☆';
+  btn.title = fav ? `從常用移除 ${ticker}` : `把 ${ticker} 加入常用`;
+}
+document.getElementById('favRow').addEventListener('click', (e) => {
+  const goBtn = e.target.closest('.fav-chip-go');
+  if(goBtn){ document.getElementById('tickerInput').value = goBtn.dataset.ticker; runQuery(); return; }
+  const xBtn = e.target.closest('.fav-chip-x');
+  if(xBtn){ toggleFavTicker(xBtn.dataset.ticker); return; }
+});
+document.getElementById('favToggleBtn').addEventListener('click', () => {
+  const t = document.getElementById('tickerInput').value.trim().toUpperCase();
+  if(!t){ setStatus('請先輸入股票代號再加入常用', 'err'); return; }
+  toggleFavTicker(t);
+});
+document.getElementById('tickerInput').addEventListener('input', (e) => {
+  updateFavToggleBtn(e.target.value.trim().toUpperCase());
+});
+renderFavRow();
+
 /* ============ Twelve Data金鑰：存在瀏覽器localStorage，重新整理網頁不用重貼 ============ */
 const TWELVE_DATA_KEY_STORAGE = 'stockDashboardTwelveDataKey';
 (function initApiKeyFromStorage(){
@@ -758,34 +862,35 @@ document.getElementById('apiKeyToggleBtn').addEventListener('click', () => {
 
 /* ============ K線 + 基本報價 ============ */
 async function loadChart(ticker, apiKey){
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=6mo&interval=1d`;
-  try{
-    const data = await fetchJson(url);
-    const res = data?.chart?.result?.[0];
-    if(!res) throw new Error('查無K線資料，代號可能不存在');
-    const ts = res.timestamp || [];
-    const q = res.indicators.quote[0];
-    const bars = ts.map((t,i) => ({
-      time: t,
-      open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i], volume: q.volume ? q.volume[i] : null
-    })).filter(b => b.open != null && b.close != null);
-    initChart();
-    series.setData(bars);
-    chart.timeScale().fitContent();
-    return { meta: res.meta || {}, bars, source: 'yahoo' };
-  }catch(yahooErr){
-    // Yahoo（含所有代理/主機組合）都失敗時，若使用者有填Twelve Data金鑰，自動改用它當備援資料源
-    if(!apiKey) throw yahooErr;
-    const [bars, meta] = await Promise.all([
-      fetchCandlesTwelveData(ticker, apiKey, 130),
-      fetchQuoteTwelveData(ticker, apiKey),
-    ]);
-    if(!bars.length) throw yahooErr;
-    initChart();
-    series.setData(bars);
-    chart.timeScale().fitContent();
-    return { meta, bars, source: 'twelvedata' };
-  }
+  const result = await withCache(`chart:${ticker}`, 5*60*1000, async () => {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=6mo&interval=1d`;
+    try{
+      const data = await fetchJson(url);
+      const res = data?.chart?.result?.[0];
+      if(!res) throw new Error('查無K線資料，代號可能不存在');
+      const ts = res.timestamp || [];
+      const q = res.indicators.quote[0];
+      const bars = ts.map((t,i) => ({
+        time: t,
+        open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i], volume: q.volume ? q.volume[i] : null
+      })).filter(b => b.open != null && b.close != null);
+      return { meta: res.meta || {}, bars, source: 'yahoo' };
+    }catch(yahooErr){
+      // Yahoo（含所有代理/主機組合）都失敗時，若使用者有填Twelve Data金鑰，自動改用它當備援資料源
+      if(!apiKey) throw yahooErr;
+      const [bars, meta] = await Promise.all([
+        fetchCandlesTwelveData(ticker, apiKey, 130),
+        fetchQuoteTwelveData(ticker, apiKey),
+      ]);
+      if(!bars.length) throw yahooErr;
+      return { meta, bars, source: 'twelvedata' };
+    }
+  });
+  // 圖表本身的繪製是畫面副作用，即使這次資料是從快取來的也要重畫一次（例如使用者切換過分頁再切回來）
+  initChart();
+  series.setData(result.bars);
+  chart.timeScale().fitContent();
+  return result;
 }
 
 function renderBasicQuote(meta, ticker, source){
@@ -869,10 +974,13 @@ function renderExtraFundamentals(r){
 
 async function loadExtraFundamentals(ticker){
   try{
-    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=price,summaryDetail,defaultKeyStatistics,financialData,assetProfile,earningsHistory,recommendationTrend,calendarEvents`;
-    const data = await fetchJson(url);
-    const r = data?.quoteSummary?.result?.[0];
-    if(!r) throw new Error('無資料');
+    const r = await withCache(`fundamentals:${ticker}`, 15*60*1000, async () => {
+      const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=price,summaryDetail,defaultKeyStatistics,financialData,assetProfile,earningsHistory,recommendationTrend,calendarEvents`;
+      const data = await fetchJson(url);
+      const res = data?.quoteSummary?.result?.[0];
+      if(!res) throw new Error('無資料');
+      return res;
+    });
     renderExtraFundamentals(r);
     const rt = (r.recommendationTrend && r.recommendationTrend.trend) || [];
     const t0 = rt[0] || {};
@@ -897,21 +1005,23 @@ async function loadExtraFundamentals(ticker){
 /* ============ 選擇權籌碼（供策略摘要使用） ============ */
 async function loadOptionsSentiment(ticker){
   try {
-    const url = `https://query1.finance.yahoo.com/v7/finance/options/${encodeURIComponent(ticker)}`;
-    const data = await fetchJson(url);
-    const res = data?.optionChain?.result?.[0];
-    if(!res || !res.options || !res.options[0]){ throw new Error('查無選擇權鏈'); }
-    const opt = res.options[0];
-    const calls = opt.calls || [], puts = opt.puts || [];
-    const callOI = calls.reduce((s,c)=> s + (c.openInterest?.raw||0), 0);
-    const putOI = puts.reduce((s,c)=> s + (c.openInterest?.raw||0), 0);
-    const pcRatio = callOI > 0 ? (putOI/callOI) : NaN;
-    const avgIvCall = calls.length ? calls.reduce((s,c)=> s + (c.impliedVolatility?.raw||0),0)/calls.length : NaN;
-    const avgIvPut = puts.length ? puts.reduce((s,c)=> s + (c.impliedVolatility?.raw||0),0)/puts.length : NaN;
-    let sentiment = 'flat', sentimentLabel = '中性籌碼';
-    if(pcRatio > 1.0){ sentiment='down'; sentimentLabel='偏空籌碼（Put偏多）'; }
-    else if(pcRatio < 0.7){ sentiment='up'; sentimentLabel='偏多籌碼（Call偏多）'; }
-    return { pcRatio, avgIv: (avgIvCall + avgIvPut) / 2, sentiment, sentimentLabel };
+    return await withCache(`options:${ticker}`, 5*60*1000, async () => {
+      const url = `https://query1.finance.yahoo.com/v7/finance/options/${encodeURIComponent(ticker)}`;
+      const data = await fetchJson(url);
+      const res = data?.optionChain?.result?.[0];
+      if(!res || !res.options || !res.options[0]){ throw new Error('查無選擇權鏈'); }
+      const opt = res.options[0];
+      const calls = opt.calls || [], puts = opt.puts || [];
+      const callOI = calls.reduce((s,c)=> s + (c.openInterest?.raw||0), 0);
+      const putOI = puts.reduce((s,c)=> s + (c.openInterest?.raw||0), 0);
+      const pcRatio = callOI > 0 ? (putOI/callOI) : NaN;
+      const avgIvCall = calls.length ? calls.reduce((s,c)=> s + (c.impliedVolatility?.raw||0),0)/calls.length : NaN;
+      const avgIvPut = puts.length ? puts.reduce((s,c)=> s + (c.impliedVolatility?.raw||0),0)/puts.length : NaN;
+      let sentiment = 'flat', sentimentLabel = '中性籌碼';
+      if(pcRatio > 1.0){ sentiment='down'; sentimentLabel='偏空籌碼（Put偏多）'; }
+      else if(pcRatio < 0.7){ sentiment='up'; sentimentLabel='偏多籌碼（Call偏多）'; }
+      return { pcRatio, avgIv: (avgIvCall + avgIvPut) / 2, sentiment, sentimentLabel };
+    });
   } catch(e){
     return null;
   }
@@ -919,15 +1029,17 @@ async function loadOptionsSentiment(ticker){
 
 /* ============ 近期相關新聞（共用抓取邏輯） ============ */
 async function fetchNewsHeadlines(query, limit=6){
-  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant`;
-  const xmlText = await fetchText(url, 12000);
-  const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
-  const items = Array.from(doc.getElementsByTagName('item')).slice(0, limit);
-  return items.map(it => ({
-    title: it.getElementsByTagName('title')[0]?.textContent || '',
-    link: it.getElementsByTagName('link')[0]?.textContent || '#',
-    pubDate: it.getElementsByTagName('pubDate')[0]?.textContent || '',
-  }));
+  return withCache(`news:${query}:${limit}`, 10*60*1000, async () => {
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant`;
+    const xmlText = await fetchText(url, 16000);
+    const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+    const items = Array.from(doc.getElementsByTagName('item')).slice(0, limit);
+    return items.map(it => ({
+      title: it.getElementsByTagName('title')[0]?.textContent || '',
+      link: it.getElementsByTagName('link')[0]?.textContent || '#',
+      pubDate: it.getElementsByTagName('pubDate')[0]?.textContent || '',
+    }));
+  });
 }
 function renderNewsRows(items){
   return items.map(it => {
@@ -944,7 +1056,9 @@ async function loadNews(ticker, companyName){
     if(!items.length) throw new Error('查無新聞');
     panel.innerHTML = `<h2>近期相關新聞</h2>${renderNewsRows(items)}`;
   }catch(e){
-    panel.innerHTML = `<h2>近期相關新聞</h2><div class="empty">新聞資料暫時無法取得（${e.message}）</div>`;
+    panel.innerHTML = `<h2>近期相關新聞</h2><div class="empty">新聞資料暫時無法取得（${e.message}）</div><div class="whale-controls" style="margin-top:8px;"><button id="newsRetryBtn">重新載入新聞</button></div>`;
+    const btn = document.getElementById('newsRetryBtn');
+    if(btn) btn.addEventListener('click', () => loadNews(ticker, companyName));
   }
 }
 
@@ -1300,44 +1414,50 @@ async function fetchQuoteTwelveData(ticker, apiKey){
 }
 
 // Step 1：大勢趨勢（用大盤 ^GSPC 的 EMA50/200 判斷牛熊，順勢而為的參考基準）
+// 這份資料跟查哪一檔個股無關，每次查詢都要用到、但幾分鐘內不會變，快取效益最高
 async function loadMarketTrendStep(){
   try{
-    const data = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=2y&interval=1d`, 12000);
-    const res = data?.chart?.result?.[0];
-    if(!res) throw new Error('查無大盤資料');
-    const closes = res.indicators.quote[0].close.filter(c=>c!=null);
-    if(closes.length < 210) throw new Error('資料長度不足以計算EMA200');
-    const ema50 = computeEMASeries(closes, 50);
-    const ema200 = computeEMASeries(closes, 200);
-    const n = closes.length;
-    const e50 = ema50[n-1], e200 = ema200[n-1];
-    const last = closes[n-1];
-    const bull = e50 > e200;
-    // 檢查近20日內是否剛發生黃金交叉/死亡交叉
-    let crossEvent = null;
-    for(let i=Math.max(200,n-20); i<n; i++){
-      if(ema50[i]==null || ema200[i]==null || ema50[i-1]==null || ema200[i-1]==null) continue;
-      if(ema50[i-1] <= ema200[i-1] && ema50[i] > ema200[i]) crossEvent = '黃金交叉';
-      if(ema50[i-1] >= ema200[i-1] && ema50[i] < ema200[i]) crossEvent = '死亡交叉';
-    }
-    return { bull, e50, e200, last, crossEvent };
+    return await withCache('marketTrend', 15*60*1000, async () => {
+      const data = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=2y&interval=1d`, 12000);
+      const res = data?.chart?.result?.[0];
+      if(!res) throw new Error('查無大盤資料');
+      const closes = res.indicators.quote[0].close.filter(c=>c!=null);
+      if(closes.length < 210) throw new Error('資料長度不足以計算EMA200');
+      const ema50 = computeEMASeries(closes, 50);
+      const ema200 = computeEMASeries(closes, 200);
+      const n = closes.length;
+      const e50 = ema50[n-1], e200 = ema200[n-1];
+      const last = closes[n-1];
+      const bull = e50 > e200;
+      // 檢查近20日內是否剛發生黃金交叉/死亡交叉
+      let crossEvent = null;
+      for(let i=Math.max(200,n-20); i<n; i++){
+        if(ema50[i]==null || ema200[i]==null || ema50[i-1]==null || ema200[i-1]==null) continue;
+        if(ema50[i-1] <= ema200[i-1] && ema50[i] > ema200[i]) crossEvent = '黃金交叉';
+        if(ema50[i-1] >= ema200[i-1] && ema50[i] < ema200[i]) crossEvent = '死亡交叉';
+      }
+      return { bull, e50, e200, last, crossEvent };
+    });
   }catch(e){
     return null;
   }
 }
 
 // Step 2：市場廣度替代指標（無官方ADL/騰落指標可免費即時取得，改用等權重ETF(RSP)/小型股(IWM) 相對大盤(SPY)的近期表現做健康度代理）
+// 同樣跟查哪一檔個股無關，全站共用一份快取
 async function loadMarketBreadthStep(){
   try{
-    const fetchReturn = async (sym) => {
-      const data = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=3mo&interval=1d`, 12000);
-      const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(c=>c!=null);
-      if(!closes || closes.length < 5) throw new Error('資料不足');
-      return (closes[closes.length-1] - closes[0]) / closes[0];
-    };
-    const [spyRet, rspRet, iwmRet] = await Promise.all([fetchReturn('SPY'), fetchReturn('RSP'), fetchReturn('IWM')]);
-    const breadthScore = (rspRet - spyRet) + (iwmRet - spyRet);
-    return { spyRet, rspRet, iwmRet, healthy: breadthScore > 0 };
+    return await withCache('marketBreadth', 15*60*1000, async () => {
+      const fetchReturn = async (sym) => {
+        const data = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/${sym}?range=3mo&interval=1d`, 12000);
+        const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(c=>c!=null);
+        if(!closes || closes.length < 5) throw new Error('資料不足');
+        return (closes[closes.length-1] - closes[0]) / closes[0];
+      };
+      const [spyRet, rspRet, iwmRet] = await Promise.all([fetchReturn('SPY'), fetchReturn('RSP'), fetchReturn('IWM')]);
+      const breadthScore = (rspRet - spyRet) + (iwmRet - spyRet);
+      return { spyRet, rspRet, iwmRet, healthy: breadthScore > 0 };
+    });
   }catch(e){
     return null;
   }
@@ -1704,6 +1824,7 @@ async function runQuery(){
   } else {
     setStatus('部分資料取得失敗，已顯示成功的部分（' + ticker + '）', 'err');
   }
+  updateFavToggleBtn(ticker);
 }
 
 document.getElementById('goBtn').addEventListener('click', runQuery);
@@ -1880,7 +2001,9 @@ async function loadTrumpSentiment(){
     if(!items.length) throw new Error('查無新聞');
     area.innerHTML = renderNewsRows(items) + `<div class="whale-date">這些是近期與川普相關、可能牽動市場的政策/言論新聞（關稅、科技、AI、加密貨幣），不是持股資料——用來觀察風向，不代表他本人的部位或操作建議。</div>`;
   }catch(e){
-    area.innerHTML = `<div class="empty">新聞資料暫時無法取得（${e.message}）</div>`;
+    area.innerHTML = `<div class="empty">新聞資料暫時無法取得（${e.message}）</div><div class="whale-controls" style="margin-top:8px;"><button id="trumpNewsRetryBtn">重新載入</button></div>`;
+    const btn = document.getElementById('trumpNewsRetryBtn');
+    if(btn) btn.addEventListener('click', loadTrumpSentiment);
   }
 }
 document.getElementById('trumpNewsBtn').addEventListener('click', loadTrumpSentiment);
@@ -1894,7 +2017,9 @@ async function loadPelosiSentiment(){
     if(!items.length) throw new Error('查無新聞');
     area.innerHTML = renderNewsRows(items) + `<div class="whale-date">這些是近期與Pelosi家族股票交易相關的新聞報導，用來補申報延遲（30–45天）造成的資訊落差；實際交易明細仍以Capitol Trades／QuiverQuant的官方申報連結為準。</div>`;
   }catch(e){
-    area.innerHTML = `<div class="empty">新聞資料暫時無法取得（${e.message}）</div>`;
+    area.innerHTML = `<div class="empty">新聞資料暫時無法取得（${e.message}）</div><div class="whale-controls" style="margin-top:8px;"><button id="pelosiNewsRetryBtn">重新載入</button></div>`;
+    const btn = document.getElementById('pelosiNewsRetryBtn');
+    if(btn) btn.addEventListener('click', loadPelosiSentiment);
   }
 }
 document.getElementById('pelosiNewsBtn').addEventListener('click', loadPelosiSentiment);
