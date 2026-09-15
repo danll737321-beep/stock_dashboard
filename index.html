@@ -108,6 +108,32 @@
   #status.err{ color: var(--down); }
   #status.ok{ color: var(--up); }
 
+  .ticker-input-wrap{ position:relative; flex:1; min-width:180px; }
+  .ticker-input-wrap input[type=text]{ width:100%; min-width:0; }
+  .ticker-suggest{
+    position:absolute; top:calc(100% + 2px); left:0; right:0; z-index:30;
+    background: var(--panel); border:1px solid var(--line); border-radius:3px;
+    max-height: 260px; overflow-y:auto; display:none; box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+  }
+  .ticker-suggest.show{ display:block; }
+  .ticker-suggest-item{
+    padding:9px 12px; cursor:pointer; font-family:var(--mono); font-size:12.5px;
+    border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px;
+  }
+  .ticker-suggest-item:last-child{ border-bottom:none; }
+  .ticker-suggest-item:hover, .ticker-suggest-item.active{ background: var(--panel-2); }
+  .ticker-suggest-sym{ color:var(--gold); font-weight:600; white-space:nowrap; }
+  .ticker-suggest-name{ color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; flex:1; }
+  .ticker-warn{ font-size:11.5px; color:var(--down); font-family:var(--mono); margin:-10px 0 10px; }
+  .pct-toggle-row{ display:flex; align-items:center; gap:6px; margin: 2px 0 10px; font-size:12px; color:var(--muted); font-family:var(--mono); }
+  .pct-toggle-row input{ cursor:pointer; }
+  .pct-toggle-row button{
+    background:var(--panel-2); border:1px solid var(--line); color:var(--gold); font-family:var(--mono);
+    font-size:11.5px; padding:4px 10px; border-radius:3px; cursor:pointer;
+  }
+  .pct-toggle-row button:hover{ filter:brightness(1.15); }
+  .pct-toggle-row button:disabled{ color:var(--muted); cursor:not-allowed; filter:none; }
+
   .panel{
     background: var(--panel); border:1px solid var(--line); border-radius:3px; padding: 16px 18px; margin-bottom:16px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.4);
@@ -185,13 +211,18 @@
   <!-- ===================== 股票分析 ===================== -->
   <div class="main-tab-content active" id="stockTab">
     <div class="search-row sticky-search">
-      <input type="text" id="tickerInput" placeholder="輸入代號，例如 AAPL、TSLA、2330.TW" value="">
+      <div class="ticker-input-wrap">
+        <input type="text" id="tickerInput" placeholder="輸入代號，例如 AAPL、TSLA、2330.TW" value="" autocomplete="off">
+        <div class="ticker-suggest" id="tickerSuggest"></div>
+      </div>
       <select id="proxySel" title="CORS代理（若查無資料可切換）">
         <option value="https://api.allorigins.win/raw?url=">代理: allorigins</option>
         <option value="https://corsproxy.io/?url=">代理: corsproxy</option>
+        <option value="https://api.codetabs.com/v1/proxy?quest=">代理: codetabs</option>
       </select>
       <button id="goBtn">查詢</button>
     </div>
+    <div class="ticker-warn" id="tickerWarn" style="display:none;"></div>
 
     <details class="adv-settings">
       <summary>進階設定（Twelve Data API金鑰／同業比較，選填）</summary>
@@ -524,9 +555,16 @@ function setStatus(msg, cls){
 const PROXIES = [
   'https://api.allorigins.win/raw?url=',
   'https://corsproxy.io/?url=',
+  'https://api.codetabs.com/v1/proxy?quest=',
 ];
 function proxiedWith(base, url){
   return base + encodeURIComponent(url);
+}
+// Yahoo的query1/query2兩台主機有時只有其中一台被擋（常見401/429），自動換另一台主機再試一次
+function altHostUrl(url){
+  if(url.includes('query1.finance.yahoo.com')) return url.replace('query1.finance.yahoo.com','query2.finance.yahoo.com');
+  if(url.includes('query2.finance.yahoo.com')) return url.replace('query2.finance.yahoo.com','query1.finance.yahoo.com');
+  return null;
 }
 async function fetchOnce(fullUrl, timeoutMs, asText){
   const ctrl = new AbortController();
@@ -539,19 +577,26 @@ async function fetchOnce(fullUrl, timeoutMs, asText){
     clearTimeout(t);
   }
 }
-// 依序嘗試「目前選的代理」→「另一個代理」，其中一個逾時或失敗就自動換下一個，不用手動切換再重試
+// 依序嘗試「目前選的代理」→ 其他代理 → 換Yahoo的另一台主機(query1/query2)再重複代理清單，
+// 其中一個逾時或失敗就自動換下一個組合，不用手動切換再重試。第一次嘗試用完整逾時時間，
+// 之後的備援嘗試改用較短逾時，避免全部失敗時等太久。
 async function fetchWithFallback(url, timeoutMs, asText){
   const selected = document.getElementById('proxySel').value;
-  const order = [selected, ...PROXIES.filter(p => p !== selected)];
+  const proxyOrder = [selected, ...PROXIES.filter(p => p !== selected)];
+  const alt = altHostUrl(url);
+  const attempts = proxyOrder.map(base => ({ url, base }));
+  if(alt) attempts.push(...proxyOrder.map(base => ({ url: alt, base })));
   let lastErr;
-  for(const base of order){
+  for(let i=0; i<attempts.length; i++){
+    const { url: targetUrl, base } = attempts[i];
+    const t = i===0 ? timeoutMs : Math.min(timeoutMs, 8000);
     try{
-      return await fetchOnce(proxiedWith(base, url), timeoutMs, asText);
+      return await fetchOnce(proxiedWith(base, targetUrl), t, asText);
     }catch(e){
       lastErr = e;
     }
   }
-  throw lastErr || new Error('所有代理皆失敗');
+  throw lastErr || new Error('所有代理與主機組合皆失敗');
 }
 async function fetchJson(url, timeoutMs=18000){
   return fetchWithFallback(url, timeoutMs, false);
@@ -576,31 +621,152 @@ function fmtBig(n){
   return fmtNum(n);
 }
 
-/* ============ K線 + 基本報價 ============ */
-async function loadChart(ticker){
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=6mo&interval=1d`;
-  const data = await fetchJson(url);
-  const res = data?.chart?.result?.[0];
-  if(!res) throw new Error('查無K線資料，代號可能不存在');
-  const ts = res.timestamp || [];
-  const q = res.indicators.quote[0];
-  const bars = ts.map((t,i) => ({
-    time: t,
-    open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i], volume: q.volume ? q.volume[i] : null
-  })).filter(b => b.open != null && b.close != null);
-  initChart();
-  series.setData(bars);
-  chart.timeScale().fitContent();
-  return { meta: res.meta || {}, bars };
+/* ============ 股票代號自動完成 + 有效性檢查 ============ */
+let tickerSuggestState = { items: [], activeIdx: -1, lastQuery: '', debounceTimer: null, lastVerifiedQuery: '', lastVerifiedFound: true };
+function debounce(fn, ms){
+  return (...args) => {
+    clearTimeout(tickerSuggestState.debounceTimer);
+    tickerSuggestState.debounceTimer = setTimeout(() => fn(...args), ms);
+  };
+}
+async function searchTickerSuggestions(q){
+  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=6&newsCount=0`;
+  const data = await fetchJson(url, 6000);
+  const quotes = (data && data.quotes) || [];
+  return quotes.filter(x => x.symbol).map(x => ({
+    symbol: x.symbol,
+    name: x.shortname || x.longname || '',
+    exch: x.exchDisp || x.exchange || '',
+    type: x.quoteType || ''
+  }));
+}
+function hideTickerSuggest(){
+  const box = document.getElementById('tickerSuggest');
+  box.classList.remove('show');
+  box.innerHTML = '';
+  tickerSuggestState.items = [];
+  tickerSuggestState.activeIdx = -1;
+}
+function renderTickerSuggest(items){
+  const box = document.getElementById('tickerSuggest');
+  tickerSuggestState.items = items;
+  tickerSuggestState.activeIdx = -1;
+  if(!items.length){ hideTickerSuggest(); return; }
+  box.innerHTML = items.map((it,i) =>
+    `<div class="ticker-suggest-item" data-idx="${i}"><span class="ticker-suggest-sym">${it.symbol}</span><span class="ticker-suggest-name">${it.name}${it.exch?`　·　${it.exch}`:''}</span></div>`
+  ).join('');
+  box.classList.add('show');
+}
+function selectTickerSuggestion(item){
+  document.getElementById('tickerInput').value = item.symbol;
+  hideTickerSuggest();
+  hideTickerWarn();
+  runQuery();
+}
+function showTickerWarn(msg){
+  const w = document.getElementById('tickerWarn');
+  w.textContent = msg;
+  w.style.display = 'block';
+}
+function hideTickerWarn(){
+  const w = document.getElementById('tickerWarn');
+  w.style.display = 'none';
+  w.textContent = '';
+}
+const debouncedTickerSearch = debounce(async (q) => {
+  if(!q){ hideTickerSuggest(); return; }
+  try{
+    const items = await searchTickerSuggestions(q);
+    // 使用者可能已經繼續打字，若查詢字串已過時就丟棄這次結果
+    if(document.getElementById('tickerInput').value.trim() !== q) return;
+    renderTickerSuggest(items);
+    tickerSuggestState.lastVerifiedQuery = q.toUpperCase();
+    tickerSuggestState.lastVerifiedFound = items.some(it => it.symbol.toUpperCase() === q.toUpperCase());
+  }catch(e){
+    // 搜尋失敗（代理限流等）不影響原本查詢流程，安靜放棄、不顯示下拉、也不做有效性判斷
+    hideTickerSuggest();
+  }
+}, 300);
+document.getElementById('tickerInput').addEventListener('input', (e) => {
+  hideTickerWarn();
+  const q = e.target.value.trim();
+  debouncedTickerSearch(q);
+});
+document.getElementById('tickerInput').addEventListener('keydown', (e) => {
+  const box = document.getElementById('tickerSuggest');
+  const items = tickerSuggestState.items;
+  if(box.classList.contains('show') && items.length){
+    if(e.key === 'ArrowDown'){ e.preventDefault(); tickerSuggestState.activeIdx = Math.min(tickerSuggestState.activeIdx+1, items.length-1); updateActiveSuggestItem(); return; }
+    if(e.key === 'ArrowUp'){ e.preventDefault(); tickerSuggestState.activeIdx = Math.max(tickerSuggestState.activeIdx-1, 0); updateActiveSuggestItem(); return; }
+    if(e.key === 'Escape'){ hideTickerSuggest(); return; }
+    if(e.key === 'Enter' && tickerSuggestState.activeIdx >= 0){ e.preventDefault(); selectTickerSuggestion(items[tickerSuggestState.activeIdx]); return; }
+  }
+  if(e.key === 'Enter'){ hideTickerSuggest(); runQuery(); }
+});
+function updateActiveSuggestItem(){
+  const box = document.getElementById('tickerSuggest');
+  [...box.children].forEach((el,i) => el.classList.toggle('active', i===tickerSuggestState.activeIdx));
+}
+document.getElementById('tickerSuggest').addEventListener('mousedown', (e) => {
+  const row = e.target.closest('.ticker-suggest-item');
+  if(!row) return;
+  const idx = Number(row.dataset.idx);
+  if(tickerSuggestState.items[idx]) selectTickerSuggestion(tickerSuggestState.items[idx]);
+});
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('.ticker-input-wrap')) hideTickerSuggest();
+});
+// 查詢送出前的有效性檢查：只有在搜尋API確實查過且查無此代號時才提示，網路/代理失敗時不誤判
+function checkTickerValidityBeforeQuery(ticker){
+  if(tickerSuggestState.lastVerifiedQuery === ticker && tickerSuggestState.lastVerifiedFound === false){
+    showTickerWarn(`查無「${ticker}」這個代號，請確認拼字或格式（例如台股需加 .TW／.TWO），以下仍會照輸入的內容查詢`);
+  } else {
+    hideTickerWarn();
+  }
 }
 
-function renderBasicQuote(meta, ticker){
+/* ============ K線 + 基本報價 ============ */
+async function loadChart(ticker, apiKey){
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=6mo&interval=1d`;
+  try{
+    const data = await fetchJson(url);
+    const res = data?.chart?.result?.[0];
+    if(!res) throw new Error('查無K線資料，代號可能不存在');
+    const ts = res.timestamp || [];
+    const q = res.indicators.quote[0];
+    const bars = ts.map((t,i) => ({
+      time: t,
+      open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i], volume: q.volume ? q.volume[i] : null
+    })).filter(b => b.open != null && b.close != null);
+    initChart();
+    series.setData(bars);
+    chart.timeScale().fitContent();
+    return { meta: res.meta || {}, bars, source: 'yahoo' };
+  }catch(yahooErr){
+    // Yahoo（含所有代理/主機組合）都失敗時，若使用者有填Twelve Data金鑰，自動改用它當備援資料源
+    if(!apiKey) throw yahooErr;
+    const [bars, meta] = await Promise.all([
+      fetchCandlesTwelveData(ticker, apiKey, 130),
+      fetchQuoteTwelveData(ticker, apiKey),
+    ]);
+    if(!bars.length) throw yahooErr;
+    initChart();
+    series.setData(bars);
+    chart.timeScale().fitContent();
+    return { meta, bars, source: 'twelvedata' };
+  }
+}
+
+function renderBasicQuote(meta, ticker, source){
   const cur = meta.regularMarketPrice;
   const prevClose = meta.chartPreviousClose ?? meta.previousClose;
   const chg = (cur != null && prevClose != null) ? (cur - prevClose) : null;
   const chgPct = (chg != null && prevClose) ? (chg/prevClose) : null;
   const isUp = (chg ?? 0) >= 0;
   const panel = document.getElementById('quotePanel');
+  const sourceNote = source === 'twelvedata'
+    ? `<div class="signal-box" style="border-color:var(--gold);margin-top:10px;">Yahoo（含所有代理/主機組合）暫時取得失敗，以下報價與K線改用Twelve Data金鑰資料源；財報指標、分析師評等、選擇權籌碼等仍依賴Yahoo，可能顯示取得失敗。</div>`
+    : '';
   panel.innerHTML = `
     <h2>基本面 <span class="note">${meta.longName || meta.shortName || ticker} · ${meta.exchangeName || ''}</span></h2>
     <div class="quote-price">${fmtNum(cur)}</div>
@@ -610,6 +776,7 @@ function renderBasicQuote(meta, ticker){
       <div class="l">幣別</div><div class="v">${meta.currency || '—'}</div>
       <div class="l">成交量</div><div class="v">${fmtBig(meta.regularMarketVolume)}</div>
     </div>
+    ${sourceNote}
     <div id="extraFundamentals" style="margin-top:8px;">
       <div style="color:var(--muted);font-size:11px;">完整財報與展望資訊載入中…</div>
     </div>
@@ -1044,7 +1211,8 @@ async function runBacktestForCurrentTicker(ticker){
   rerun.innerHTML = `<button id="runBacktestBtn2">重新執行回測</button>`;
   panel.appendChild(rerun);
 
-  // 回測完成後，在「核心指標模組」補上相對這檔股票自己歷史分布的百分位校正（純資訊附註，不會回頭改動已經算好的短線分數）
+  // 回測完成後，算出這檔股票自己近2年歷史分布的百分位，並直接拿去重新計分「短線／長線觀察摘要」裡的均值回歸票
+  // （不再只是附註；預設自動切換成百分位計分，使用者可在該面板用按鈕切回固定門檻比較）
   if(bt && bt.rsiSeries){
     const lastRsi = [...bt.rsiSeries].reverse().find(v=>v!=null);
     const lastK = bt.kdSeries && [...bt.kdSeries.k].reverse().find(v=>v!=null);
@@ -1056,8 +1224,12 @@ async function runBacktestForCurrentTicker(ticker){
       if(existing) existing.remove();
       const note = document.createElement('div');
       note.className = 'signal-box percentile-note';
-      note.innerHTML = `<strong>百分位校正（相對這檔股票自己近2年的歷史分布，不是固定30/70門檻）：</strong>目前RSI14位於自己歷史的第 ${rsiPct.toFixed(0)} 百分位${kPct!=null?`，KD-K位於第 ${kPct.toFixed(0)} 百分位`:''}。同樣是「RSI=70」，對長期高波動股票可能只是歷史中位數，對低波動股票可能已經是歷史極端值——這裡改用個股自己的歷史排名判斷相對超買超賣，第10百分位以下算相對超賣、第90百分位以上算相對超買，比固定門檻更貼近這檔股票自己的波動特性。「短線／長線觀察摘要」的計分仍使用固定30/70門檻，這裡僅供交叉比對參考。`;
+      note.innerHTML = `<strong>百分位校正（相對這檔股票自己近2年的歷史分布，不是固定30/70門檻）：</strong>目前RSI14位於自己歷史的第 ${rsiPct.toFixed(0)} 百分位${kPct!=null?`，KD-K位於第 ${kPct.toFixed(0)} 百分位`:''}。同樣是「RSI=70」，對長期高波動股票可能只是歷史中位數，對低波動股票可能已經是歷史極端值——這裡改用個股自己的歷史排名判斷相對超買超賣，第10百分位以下算相對超賣、第90百分位以上算相對超買，比固定門檻更貼近這檔股票自己的波動特性。已自動套用到上方「短線／長線觀察摘要」的均值回歸票計分，可在該面板按鈕切回固定門檻比較。`;
       stepPanel.appendChild(note);
+    }
+    if((rsiPct != null || kPct != null) && lastQueryCtx && lastQueryCtx.ticker === ticker){
+      lastPctData = { rsiPct, kPct };
+      renderStrategy(lastQueryCtx.ticker, lastQueryCtx.chartRes, lastQueryCtx.fund, lastQueryCtx.opt, lastQueryCtx.regModel, lastQueryCtx.stepResult, lastPctData);
     }
   }
 }
@@ -1075,6 +1247,25 @@ async function fetchCandlesTwelveData(ticker, apiKey, outputsize=260){
     open: parseFloat(v.open), high: parseFloat(v.high), low: parseFloat(v.low), close: parseFloat(v.close),
     volume: v.volume ? parseFloat(v.volume) : null
   })).reverse();
+}
+// Twelve Data的即時報價，當Yahoo（含所有代理/主機組合）都失敗時，作為基本面/K線的備援資料源
+async function fetchQuoteTwelveData(ticker, apiKey){
+  const url = `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(ticker)}&apikey=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Twelve Data HTTP '+res.status);
+  const d = await res.json();
+  if(d.status === 'error' || d.code) throw new Error('Twelve Data: '+(d.message||'查無此代號'));
+  return {
+    longName: d.name || ticker,
+    shortName: d.name || ticker,
+    exchangeName: d.exchange || '',
+    currency: d.currency || '',
+    regularMarketPrice: d.close!=null ? parseFloat(d.close) : null,
+    chartPreviousClose: d.previous_close!=null ? parseFloat(d.previous_close) : null,
+    regularMarketVolume: d.volume!=null ? parseFloat(d.volume) : null,
+    fiftyTwoWeekHigh: d.fifty_two_week?.high!=null ? parseFloat(d.fifty_two_week.high) : null,
+    fiftyTwoWeekLow: d.fifty_two_week?.low!=null ? parseFloat(d.fifty_two_week.low) : null,
+  };
 }
 
 // Step 1：大勢趨勢（用大盤 ^GSPC 的 EMA50/200 判斷牛熊，順勢而為的參考基準）
@@ -1216,6 +1407,17 @@ function renderStepCheck(bars, trendStep, breadthStep){
   return { trendStep, breadthStep, pos, pattern, volConf };
 }
 
+/* ============ 目前查詢結果快取（供回測完成後，以百分位重新計分用） ============ */
+let lastQueryCtx = null;   // { ticker, chartRes, fund, opt, regModel, stepResult }
+let lastPctData = null;    // { rsiPct, kPct }，回測完成後才有值
+document.getElementById('strategyPanel').addEventListener('click', (e) => {
+  if(e.target && e.target.id === 'pctToggleBtn' && !e.target.disabled && lastQueryCtx){
+    const nowUsingPct = e.target.textContent.includes('改回固定門檻');
+    const nextPctData = nowUsingPct ? null : lastPctData;
+    renderStrategy(lastQueryCtx.ticker, lastQueryCtx.chartRes, lastQueryCtx.fund, lastQueryCtx.opt, lastQueryCtx.regModel, lastQueryCtx.stepResult, nextPctData);
+  }
+});
+
 /* ============ 訊號燈與策略摘要（規則導向，公式全部透明） ============ */
 function ratingFromScore(score){
   if(score >= 3) return { label:'強力買進訊號', cls:'up' };
@@ -1253,7 +1455,7 @@ function pickOptionStrategy(shortCls, ivLevel){
   return { name:'觀望，或小部位買進勒式（long strangle）賭變盤', reason:'方向不明確，且權利金便宜，若判斷後續可能有較大變動（如財報、總經數據公布），可考慮低成本佈局雙邊部位。' };
 }
 
-function renderStrategy(ticker, chartRes, fund, opt, regModel, stepResult){
+function renderStrategy(ticker, chartRes, fund, opt, regModel, stepResult, pctData){
   const panel = document.getElementById('strategyPanel');
   const mom = chartRes ? computeMomentum(chartRes.bars) : null;
 
@@ -1271,11 +1473,23 @@ function renderStrategy(ticker, chartRes, fund, opt, regModel, stepResult){
   if(stepResult && stepResult.pos && stepResult.pos.macd){ trendVoteCount++; const v = stepResult.pos.macd.histogram>0?1:-1; trendVotesRaw+=v; trendDetail.push(`MACD柱狀圖：${v>0?'正':'負'}`); }
   const trendVote = trendVoteCount>0 ? (trendVotesRaw>=2?1:(trendVotesRaw<=-2?-1:0)) : 0;
 
-  // 票2：均值回歸（RSI + KD 合併成一票）
+  // 票2：均值回歸（RSI + KD 合併成一票）—— 執行過回測、拿得到個股自己近2年歷史分布後，改用該股自己的百分位判斷相對超買超賣；
+  // 否則沿用固定門檻(RSI 30/70、KD 20/80)。兩種模式互斥，不會同時計分，避免同一組資料被算兩次。
+  const usingPct = !!(pctData && (pctData.rsiPct != null || pctData.kPct != null));
   let mrVotesRaw = 0, mrVoteCount = 0;
   const mrDetail = [];
-  if(stepResult && stepResult.pos && stepResult.pos.rsi != null){ mrVoteCount++; const v = stepResult.pos.rsi<30?1:(stepResult.pos.rsi>70?-1:0); mrVotesRaw+=v; mrDetail.push(`RSI14=${fmtNum(stepResult.pos.rsi,1)}`); }
-  if(stepResult && stepResult.pos && stepResult.pos.kd){ mrVoteCount++; const v = stepResult.pos.kd.k<20?1:(stepResult.pos.kd.k>80?-1:0); mrVotesRaw+=v; mrDetail.push(`KD(9) K=${fmtNum(stepResult.pos.kd.k,1)}`); }
+  if(usingPct && pctData.rsiPct != null){
+    mrVoteCount++; const v = pctData.rsiPct<=10?1:(pctData.rsiPct>=90?-1:0); mrVotesRaw+=v;
+    mrDetail.push(`RSI14個股歷史百分位=${pctData.rsiPct.toFixed(0)}${stepResult&&stepResult.pos?`（現值${fmtNum(stepResult.pos.rsi,1)}）`:''}`);
+  } else if(stepResult && stepResult.pos && stepResult.pos.rsi != null){
+    mrVoteCount++; const v = stepResult.pos.rsi<30?1:(stepResult.pos.rsi>70?-1:0); mrVotesRaw+=v; mrDetail.push(`RSI14=${fmtNum(stepResult.pos.rsi,1)}（固定門檻30/70）`);
+  }
+  if(usingPct && pctData.kPct != null){
+    mrVoteCount++; const v = pctData.kPct<=10?1:(pctData.kPct>=90?-1:0); mrVotesRaw+=v;
+    mrDetail.push(`KD-K個股歷史百分位=${pctData.kPct.toFixed(0)}${stepResult&&stepResult.pos&&stepResult.pos.kd?`（現值K=${fmtNum(stepResult.pos.kd.k,1)}）`:''}`);
+  } else if(stepResult && stepResult.pos && stepResult.pos.kd){
+    mrVoteCount++; const v = stepResult.pos.kd.k<20?1:(stepResult.pos.kd.k>80?-1:0); mrVotesRaw+=v; mrDetail.push(`KD(9) K=${fmtNum(stepResult.pos.kd.k,1)}（固定門檻20/80）`);
+  }
   const mrVote = mrVoteCount>0 ? (mrVotesRaw>=1?1:(mrVotesRaw<=-1?-1:0)) : 0;
 
   // 票3：選擇權籌碼
@@ -1363,8 +1577,15 @@ function renderStrategy(ticker, chartRes, fund, opt, regModel, stepResult){
     document.getElementById('signalHistoryPanel').style.display = 'none';
   }
 
+  const pctToggleHtml = usingPct
+    ? `<div class="pct-toggle-row">均值回歸票目前使用：<strong style="color:var(--gold);">個股歷史百分位</strong>（相對這檔股票自己近2年分布）　<button id="pctToggleBtn">改回固定門檻(30/70)計分</button></div>`
+    : (lastPctData
+        ? `<div class="pct-toggle-row">均值回歸票目前使用：<strong>固定門檻</strong>(RSI 30/70、KD 20/80)　<button id="pctToggleBtn">改用個股歷史百分位計分</button></div>`
+        : `<div class="pct-toggle-row">均值回歸票目前使用：<strong>固定門檻</strong>(RSI 30/70、KD 20/80)　<button id="pctToggleBtn" disabled title="需先在下方「回測」分頁執行過回測">個股百分位計分（需先執行回測）</button></div>`);
+
   panel.innerHTML = `
     <h2>短線／長線觀察摘要 <span class="note">四票制規則導向訊號，非個人化投資建議</span></h2>
+    ${pctToggleHtml}
     ${earningsNote}
     <div class="strategy-block">
       <div class="rating-line">
@@ -1400,22 +1621,28 @@ async function runQuery(){
   const raw = document.getElementById('tickerInput').value.trim();
   if(!raw){ setStatus('請輸入股票代號', 'err'); return; }
   const ticker = raw.toUpperCase();
+  hideTickerSuggest();
+  checkTickerValidityBeforeQuery(ticker);
   const peerRaw = document.getElementById('peerInput').value.trim();
   const peers = peerRaw ? peerRaw.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean).slice(0,3) : [];
+  const queryApiKey = document.getElementById('apiKeyInput').value.trim();
   setStatus('查詢中…（多項資料同時抓取）');
   document.getElementById('backtestPanel').innerHTML = `<h2>策略回測</h2><div class="empty">回測需要額外抓取近2年歷史資料，比較耗時，所以獨立成按鈕觸發，不會拖慢一般查詢速度</div><div class="whale-controls" style="margin-top:10px;"><button id="runBacktestBtn">執行回測（抓近2年資料，需要額外時間）</button></div>`;
 
   let regModel = null;
-  const chartPromise = loadChart(ticker)
+  const chartPromise = loadChart(ticker, queryApiKey)
     .then(res => {
-      renderBasicQuote(res.meta, ticker);
+      renderBasicQuote(res.meta, ticker, res.source);
       document.getElementById('klineSignal').innerHTML = computeSignalText(res.bars);
       regModel = renderTrendModel(res.bars);
       loadNews(ticker, res.meta.longName || res.meta.shortName);
       return res;
     })
     .catch(e => {
-      document.getElementById('quotePanel').innerHTML = `<h2>基本面</h2><div class="empty">K線/報價資料取得失敗：${e.message}（已自動改試過兩個代理都失敗，可能是Yahoo暫時限流，稍後再查一次）</div>`;
+      const hint = queryApiKey
+        ? '已自動改試過三個代理、兩台Yahoo主機、以及Twelve Data金鑰備援，仍取得失敗，可能是代號有誤或Twelve Data額度已用完。'
+        : '已自動改試過三個代理與兩台Yahoo主機都失敗，可能是Yahoo暫時限流；也可以在「進階設定」填入Twelve Data金鑰，Yahoo失敗時會自動改用它當備援資料源。';
+      document.getElementById('quotePanel').innerHTML = `<h2>基本面</h2><div class="empty">K線/報價資料取得失敗：${e.message}（${hint}）</div>`;
       document.getElementById('klineSignal').textContent = '無法判讀（資料取得失敗）';
       document.getElementById('trendModel').textContent = '無法計算（資料取得失敗）';
       loadNews(ticker, null);
@@ -1430,6 +1657,8 @@ async function runQuery(){
   const [chartRes, optionsRes, fundRes, trendStepRes, breadthStepRes] = await Promise.all([chartPromise, optionsPromise, fundPromise, trendStepPromise, breadthStepPromise]);
 
   const stepResult = renderStepCheck(chartRes ? chartRes.bars : null, trendStepRes, breadthStepRes);
+  lastQueryCtx = { ticker, chartRes, fund: fundRes, opt: optionsRes, regModel, stepResult };
+  lastPctData = null;
   renderStrategy(ticker, chartRes, fundRes, optionsRes, regModel, stepResult);
 
   if(peers.length && fundRes){
@@ -1454,8 +1683,6 @@ document.getElementById('subBacktest').addEventListener('click', (e) => {
     runBacktestForCurrentTicker(t);
   }
 });
-document.getElementById('tickerInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') runQuery(); });
-
 /* ============ 同業估值比較（選填） ============ */
 async function loadPeerComparison(peerTickers, baseTicker, basePE, baseFwdPE){
   const panel = document.getElementById('peerPanel');
