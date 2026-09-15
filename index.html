@@ -166,6 +166,37 @@
   }
   .panel h2 .note{ color: var(--muted); font-weight:400; font-size:11px; font-family: var(--mono); float:right; }
 
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin: 0 -2px; }
+  .table-scroll table{ width:100%; }
+  /* 追蹤名單資金動向表：內容是長篇敘述而不是短數字，窄螢幕改成逐欄標籤式卡片而不是硬擠表格 */
+  .consensus-head{ display:grid; grid-template-columns: 1.1fr 1.6fr 1fr; gap:6px 20px; font-family:var(--mono); font-size:11px; color:var(--muted); padding-bottom:8px; border-bottom:1px solid var(--line); margin-bottom:10px; }
+  .consensus-table{ display:flex; flex-direction:column; gap:14px; }
+  .consensus-row{ display:grid; grid-template-columns: 1.1fr 1.6fr 1fr; gap:6px 20px; }
+  .consensus-cell{ font-size:12.5px; line-height:1.7; }
+  .consensus-cell .mobile-label{ display:none; }
+
+  @media (max-width: 480px){
+    body{ padding: 14px 10px 48px; }
+    header.top h1{ font-size:17px; }
+    .panel{ padding: 14px 14px; }
+    .panel h2{ font-size:13px; padding-bottom:10px; }
+    .panel h2 .note{ float:none; display:block; margin-top:4px; font-size:10.5px; line-height:1.5; }
+    .quote-price{ font-size:28px; }
+    table{ font-size:11px; }
+    table th, table td{ padding:6px 8px; }
+    .table-scroll table{ width:auto; }
+
+    .consensus-head{ display:none; }
+    .consensus-row{ grid-template-columns: 1fr; gap:10px; border-bottom:1px solid var(--line); padding-bottom:14px; }
+    .consensus-cell .mobile-label{ display:block; font-family:var(--mono); font-size:10.5px; color:var(--gold); margin-bottom:3px; }
+
+    .search-row.sticky-search{ row-gap:8px; }
+    .ticker-input-wrap{ flex: 1 1 100%; }
+    #proxySel{ flex: 1 1 auto; min-width:0; }
+    #favToggleBtn{ flex: 0 0 44px; }
+    #goBtn{ flex: 1 1 auto; }
+  }
+
   .kv{ display:grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-family: var(--mono); font-size: 13px; }
   .kv .l{ color: var(--muted); }
   .kv .v{ text-align:right; }
@@ -345,10 +376,8 @@
     <div class="panel">
       <h2>追蹤名單資金動向整理 <span class="note">僅根據下方5位人物，非全市場機構共識</span></h2>
       <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">這不是「市場上所有大型機構的共識」（那需要橫跨數十檔13F才有統計意義），而是把我們實際追蹤的這5位人物最新揭露的真實動作，整理成同一種格式方便你掃描。每一格都能對應到下面卡片裡的原始說明。</div>
-      <table>
-        <thead><tr><th>資金/政策方向</th><th>具體動作（依人物）</th><th>涉及核心標的</th></tr></thead>
-        <tbody id="consensusTbl"></tbody>
-      </table>
+      <div class="consensus-head"><div>資金/政策方向</div><div>具體動作（依人物）</div><div>涉及核心標的</div></div>
+      <div class="consensus-table" id="consensusTbl"></div>
     </div>
 
     <div class="whale-grid">
@@ -542,7 +571,11 @@ const WHALE_CONSENSUS = [
 ];
 function renderConsensusTable(){
   document.getElementById('consensusTbl').innerHTML = WHALE_CONSENSUS.map(row =>
-    `<tr><td style="white-space:nowrap;">${row.theme}</td><td>${row.action}</td><td>${row.tickers}</td></tr>`
+    `<div class="consensus-row">
+      <div class="consensus-cell"><span class="mobile-label">資金/政策方向</span>${row.theme}</div>
+      <div class="consensus-cell"><span class="mobile-label">具體動作（依人物）</span>${row.action}</div>
+      <div class="consensus-cell"><span class="mobile-label">涉及核心標的</span>${row.tickers}</div>
+    </div>`
   ).join('');
 }
 
@@ -656,6 +689,12 @@ function fmtBig(n){
   if(abs >= 1e6) return (n/1e6).toFixed(2) + 'M';
   return fmtNum(n);
 }
+// 外部資料（新聞標題、公司名稱、13F持股名稱等）在塞進innerHTML前先跳脫，
+// 避免內容剛好帶有 & < > 這類符號時把排版弄壞，也避免理論上的HTML/腳本注入風險
+function escapeHtml(str){
+  if(str == null) return '';
+  return String(str).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+}
 
 /* ============ 請求節流快取：短時間內重複查同一份資料就不重打API，降低免費代理/Twelve Data額度消耗 ============
    存在sessionStorage（分頁關閉就清空，不會用到隔夜的舊資料），依資料更新頻率給不同TTL：
@@ -714,7 +753,7 @@ function renderTickerSuggest(items){
   tickerSuggestState.activeIdx = -1;
   if(!items.length){ hideTickerSuggest(); return; }
   box.innerHTML = items.map((it,i) =>
-    `<div class="ticker-suggest-item" data-idx="${i}"><span class="ticker-suggest-sym">${it.symbol}</span><span class="ticker-suggest-name">${it.name}${it.exch?`　·　${it.exch}`:''}</span></div>`
+    `<div class="ticker-suggest-item" data-idx="${i}"><span class="ticker-suggest-sym">${escapeHtml(it.symbol)}</span><span class="ticker-suggest-name">${escapeHtml(it.name)}${it.exch?`　·　${escapeHtml(it.exch)}`:''}</span></div>`
   ).join('');
   box.classList.add('show');
 }
@@ -904,7 +943,7 @@ function renderBasicQuote(meta, ticker, source){
     ? `<div class="signal-box" style="border-color:var(--gold);margin-top:10px;">Yahoo（含所有代理/主機組合）暫時取得失敗，以下報價與K線改用Twelve Data金鑰資料源；財報指標、分析師評等、選擇權籌碼等仍依賴Yahoo，可能顯示取得失敗。</div>`
     : '';
   panel.innerHTML = `
-    <h2>基本面 <span class="note">${meta.longName || meta.shortName || ticker} · ${meta.exchangeName || ''}</span></h2>
+    <h2>基本面 <span class="note">${escapeHtml(meta.longName || meta.shortName || ticker)} · ${escapeHtml(meta.exchangeName || '')}</span></h2>
     <div class="quote-price">${fmtNum(cur)}</div>
     <div class="quote-change ${isUp ? 'up':'down'}">${chg!=null ? (isUp?'+':'')+fmtNum(chg)+'（'+(isUp?'+':'')+fmtNum((chgPct||0)*100)+'%）' : '—'}</div>
     <div class="kv" style="margin-top:14px;">
@@ -941,7 +980,7 @@ function renderExtraFundamentals(r){
       <div class="l">營收成長 (YoY)</div><div class="v">${fmtPct(fd.revenueGrowth?.raw)}</div>
       <div class="l">毛利率</div><div class="v">${fmtPct(fd.grossMargins?.raw)}</div>
       <div class="l">分析師目標價</div><div class="v">${fmtNum(fd.targetMeanPrice?.raw)}</div>
-      <div class="l">分析師建議</div><div class="v">${fd.recommendationKey || '—'}</div>
+      <div class="l">分析師建議</div><div class="v">${escapeHtml(fd.recommendationKey) || '—'}</div>
     </div>
   `;
   if(earningsRaw){
@@ -951,10 +990,10 @@ function renderExtraFundamentals(r){
     html += `<div class="macro-date" style="margin-top:10px;">下次財報預估日期：${d.toISOString().slice(0,10)}（距今約${daysUntil}天）${warn}</div>`;
   }
   if(ap.sector || ap.industry){
-    html += `<div class="macro-date" style="margin-top:6px;">產業別：${ap.sector||'—'} ／ ${ap.industry||'—'}</div>`;
+    html += `<div class="macro-date" style="margin-top:6px;">產業別：${escapeHtml(ap.sector)||'—'} ／ ${escapeHtml(ap.industry)||'—'}</div>`;
   }
   if(ap.longBusinessSummary){
-    const s = ap.longBusinessSummary;
+    const s = escapeHtml(ap.longBusinessSummary);
     html += `<div style="font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:8px;">${s.slice(0,220)}${s.length>220?'…':''}</div>`;
   }
   if(eh.length){
@@ -963,7 +1002,7 @@ function renderExtraFundamentals(r){
       return `<tr><td>${label}</td><td>${fmtNum(q.epsActual?.raw)}</td><td>${fmtNum(q.epsEstimate?.raw)}</td><td>${fmtPct(q.surprisePercent?.raw)}</td></tr>`;
     }).join('');
     html += `<div class="subhead" style="margin-top:12px;">近期財報表現（EPS 實際 vs 預估）</div>
-      <table><thead><tr><th>季度</th><th>實際</th><th>預估</th><th>差異%</th></tr></thead><tbody>${rows}</tbody></table>`;
+      <div class="table-scroll"><table style="min-width:380px;"><thead><tr><th>季度</th><th>實際</th><th>預估</th><th>差異%</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   if(rt.length){
     const t0 = rt[0];
@@ -1044,21 +1083,23 @@ async function fetchNewsHeadlines(query, limit=6){
 function renderNewsRows(items){
   return items.map(it => {
     const d = it.pubDate ? new Date(it.pubDate).toLocaleDateString('zh-TW') : '';
-    return `<div class="news-item"><a href="${it.link}" target="_blank" rel="noopener">${it.title}</a><span class="news-date">${d}</span></div>`;
+    return `<div class="news-item"><a href="${escapeHtml(it.link)}" target="_blank" rel="noopener">${escapeHtml(it.title)}</a><span class="news-date">${d}</span></div>`;
   }).join('');
 }
 
-async function loadNews(ticker, companyName){
+async function loadNews(ticker, companyName, queryId){
   const panel = document.getElementById('newsPanel');
   try{
     const q = companyName ? `${ticker} ${companyName}` : (ticker + ' stock');
     const items = await fetchNewsHeadlines(q, 6);
+    if(queryId != null && queryId !== activeQueryId) return; // 這段時間內使用者已經改查別的代號
     if(!items.length) throw new Error('查無新聞');
     panel.innerHTML = `<h2>近期相關新聞</h2>${renderNewsRows(items)}`;
   }catch(e){
+    if(queryId != null && queryId !== activeQueryId) return;
     panel.innerHTML = `<h2>近期相關新聞</h2><div class="empty">新聞資料暫時無法取得（${e.message}）</div><div class="whale-controls" style="margin-top:8px;"><button id="newsRetryBtn">重新載入新聞</button></div>`;
     const btn = document.getElementById('newsRetryBtn');
-    if(btn) btn.addEventListener('click', () => loadNews(ticker, companyName));
+    if(btn) btn.addEventListener('click', () => loadNews(ticker, companyName, queryId));
   }
 }
 
@@ -1313,10 +1354,10 @@ function renderBacktest(bt){
   }).join('');
   panel.innerHTML = `
     <h2>策略回測 <span class="note">近2年、每3個交易日取樣一次</span></h2>
-    <table>
+    <div class="table-scroll"><table style="min-width:600px;">
       <thead><tr><th>訊號</th><th>樣本數</th><th>平均5日報酬</th><th>5日勝率</th><th>平均20日報酬</th><th>20日勝率</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>
+    </table></div>
     <div class="whale-date">這是把「趨勢/動能」「均值回歸(RSI+KD)」「K線型態」三票加總的短線規則，套到這檔股票近2年的歷史資料上重跑一遍，看過去這個訊號出現後，實際5天/20天後的報酬與勝率如何。樣本數太少（例如個位數）時，統計上不具參考力；選擇權籌碼與基本面資料無法取得歷史值，未納入回測。這是「這套規則在這檔股票的歷史表現」，不代表未來會重演。</div>
   `;
 }
@@ -1347,8 +1388,10 @@ async function loadBacktestData(ticker, apiKey){
 }
 
 async function runBacktestForCurrentTicker(ticker){
+  const myQueryId = activeQueryId; // 記住開始回測當下是哪一次查詢，回測跑很久，跑完前使用者可能已經改查別的代號
   const apiKey = document.getElementById('apiKeyInput').value.trim();
   const bt = await loadBacktestData(ticker, apiKey);
+  if(myQueryId !== activeQueryId) return; // 使用者已經改查別的代號，這份回測結果不寫進畫面
   const panel = document.getElementById('backtestPanel');
   const rerun = document.createElement('div');
   rerun.className = 'whale-controls';
@@ -1561,6 +1604,9 @@ function renderStepCheck(bars, trendStep, breadthStep){
 /* ============ 目前查詢結果快取（供回測完成後，以百分位重新計分用） ============ */
 let lastQueryCtx = null;   // { ticker, chartRes, fund, opt, regModel, stepResult }
 let lastPctData = null;    // { rsiPct, kPct }，回測完成後才有值
+// 查詢版本號：每次runQuery遞增一次，非同步結果回來時比對這個號碼，
+// 不是最新的就放棄不寫進畫面——避免快速連續查不同代號時，畫面被慢到的舊結果蓋掉
+let activeQueryId = 0;
 document.getElementById('strategyPanel').addEventListener('click', (e) => {
   if(e.target && e.target.id === 'pctToggleBtn' && !e.target.disabled && lastQueryCtx){
     const nowUsingPct = e.target.textContent.includes('改回固定門檻');
@@ -1771,7 +1817,12 @@ function renderStrategy(ticker, chartRes, fund, opt, regModel, stepResult, pctDa
 async function runQuery(){
   const raw = document.getElementById('tickerInput').value.trim();
   if(!raw){ setStatus('請輸入股票代號', 'err'); return; }
+  if(typeof navigator !== 'undefined' && navigator.onLine === false){
+    setStatus('目前裝置離線，請先確認網路連線後再查詢', 'err');
+    return;
+  }
   const ticker = raw.toUpperCase();
+  const myQueryId = ++activeQueryId; // 這次查詢的版本號，之後每個非同步結果回來都要跟activeQueryId比對
   hideTickerSuggest();
   checkTickerValidityBeforeQuery(ticker);
   const peerRaw = document.getElementById('peerInput').value.trim();
@@ -1783,20 +1834,22 @@ async function runQuery(){
   let regModel = null;
   const chartPromise = loadChart(ticker, queryApiKey)
     .then(res => {
+      if(myQueryId !== activeQueryId) return res; // 使用者已經改查別的代號，這次結果不寫進畫面
       renderBasicQuote(res.meta, ticker, res.source);
       document.getElementById('klineSignal').innerHTML = computeSignalText(res.bars);
       regModel = renderTrendModel(res.bars);
-      loadNews(ticker, res.meta.longName || res.meta.shortName);
+      loadNews(ticker, res.meta.longName || res.meta.shortName, myQueryId);
       return res;
     })
     .catch(e => {
+      if(myQueryId !== activeQueryId) return null;
       const hint = queryApiKey
         ? '已自動改試過三個代理、兩台Yahoo主機、以及Twelve Data金鑰備援，仍取得失敗，可能是代號有誤或Twelve Data額度已用完。'
         : '已自動改試過三個代理與兩台Yahoo主機都失敗，可能是Yahoo暫時限流；也可以在「進階設定」填入Twelve Data金鑰，Yahoo失敗時會自動改用它當備援資料源。';
       document.getElementById('quotePanel').innerHTML = `<h2>基本面</h2><div class="empty">K線/報價資料取得失敗：${e.message}（${hint}）</div>`;
       document.getElementById('klineSignal').textContent = '無法判讀（資料取得失敗）';
       document.getElementById('trendModel').textContent = '無法計算（資料取得失敗）';
-      loadNews(ticker, null);
+      loadNews(ticker, null, myQueryId);
       return null;
     });
 
@@ -1806,6 +1859,7 @@ async function runQuery(){
   const breadthStepPromise = loadMarketBreadthStep();
 
   const [chartRes, optionsRes, fundRes, trendStepRes, breadthStepRes] = await Promise.all([chartPromise, optionsPromise, fundPromise, trendStepPromise, breadthStepPromise]);
+  if(myQueryId !== activeQueryId) return; // 這一整批資料回來時，已經有更新的查詢在跑，整批放棄
 
   const stepResult = renderStepCheck(chartRes ? chartRes.bars : null, trendStepRes, breadthStepRes);
   lastQueryCtx = { ticker, chartRes, fund: fundRes, opt: optionsRes, regModel, stepResult };
@@ -1813,7 +1867,7 @@ async function runQuery(){
   renderStrategy(ticker, chartRes, fundRes, optionsRes, regModel, stepResult);
 
   if(peers.length && fundRes){
-    loadPeerComparison(peers, ticker, fundRes.trailingPE, fundRes.forwardPE);
+    loadPeerComparison(peers, ticker, fundRes.trailingPE, fundRes.forwardPE, myQueryId);
   } else {
     document.getElementById('peerPanel').style.display = 'none';
   }
@@ -1836,7 +1890,7 @@ document.getElementById('subBacktest').addEventListener('click', (e) => {
   }
 });
 /* ============ 同業估值比較（選填） ============ */
-async function loadPeerComparison(peerTickers, baseTicker, basePE, baseFwdPE){
+async function loadPeerComparison(peerTickers, baseTicker, basePE, baseFwdPE, queryId){
   const panel = document.getElementById('peerPanel');
   if(!peerTickers.length){ panel.style.display = 'none'; return; }
   panel.style.display = 'block';
@@ -1849,14 +1903,16 @@ async function loadPeerComparison(peerTickers, baseTicker, basePE, baseFwdPE){
         return { ticker:t, name: r?.price?.shortName || t, pe: r?.summaryDetail?.trailingPE?.raw, fwdPe: r?.summaryDetail?.forwardPE?.raw };
       }catch(e){ return { ticker:t, name:t, pe:null, fwdPe:null }; }
     }));
+    if(queryId != null && queryId !== activeQueryId) return; // 使用者已經改查別的代號，這批同業比較結果不寫進畫面
     const rows = [{ ticker: baseTicker, name: baseTicker + '（查詢中股票）', pe: basePE, fwdPe: baseFwdPE }, ...results];
     panel.innerHTML = `
       <h2>同業估值比較</h2>
-      <table><thead><tr><th>代號</th><th>本益比(TTM)</th><th>預估本益比</th></tr></thead>
-      <tbody>${rows.map(r => `<tr><td>${r.name}</td><td>${fmtNum(r.pe)}</td><td>${fmtNum(r.fwdPe)}</td></tr>`).join('')}</tbody></table>
+      <div class="table-scroll"><table style="min-width:420px;"><thead><tr><th>代號</th><th>本益比(TTM)</th><th>預估本益比</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${escapeHtml(r.name)}</td><td>${fmtNum(r.pe)}</td><td>${fmtNum(r.fwdPe)}</td></tr>`).join('')}</tbody></table></div>
       <div class="whale-date">本益比沒有絕對高低，只有跟同業比才有意義；這裡只比較本益比，沒有調整成長率、獲利品質、資本結構等差異，僅供快速參考。</div>
     `;
   }catch(e){
+    if(queryId != null && queryId !== activeQueryId) return;
     panel.innerHTML = `<h2>同業估值比較</h2><div class="empty">取得失敗：${e.message}</div>`;
   }
 }
@@ -1885,7 +1941,7 @@ function renderSignalHistoryFor(ticker, currentPrice){
   }).join('');
   panel.innerHTML = `
     <h2>此代號的歷史訊號紀錄 <span class="note">存在你瀏覽器的localStorage，換裝置或清瀏覽器資料會消失</span></h2>
-    <table><thead><tr><th>查詢日期</th><th>短線訊號</th><th>長線訊號</th><th>當時價格</th><th>至今報酬</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="table-scroll"><table style="min-width:480px;"><thead><tr><th>查詢日期</th><th>短線訊號</th><th>長線訊號</th><th>當時價格</th><th>至今報酬</th></tr></thead><tbody>${rows}</tbody></table></div>
   `;
 }
 
@@ -1980,10 +2036,10 @@ function renderPie(area, items, total, name, periodOfReport, prevPeriod){
     const deltaHtml = it.deltaLabel
       ? `<span style="margin-left:6px;color:${it.deltaLabel==='新進' ? 'var(--up)' : (it.deltaLabel.startsWith('+') ? 'var(--up)' : (it.deltaLabel.startsWith('-') ? 'var(--down)' : 'var(--muted)'))};font-size:11px;">${it.deltaLabel}</span>`
       : '';
-    return `<div class="pie-legend-item"><span class="pie-swatch" style="background:${colors[i%colors.length]}"></span>${it.name}（${pct}%）${deltaHtml}</div>`;
+    return `<div class="pie-legend-item"><span class="pie-swatch" style="background:${colors[i%colors.length]}"></span>${escapeHtml(it.name)}（${pct}%）${deltaHtml}</div>`;
   }).join('');
   area.innerHTML = `
-    <div class="macro-date">${name} · 申報期別 ${periodOfReport || '—'}（13F每季揭露，延遲可達45天，屬靜態快照）</div>
+    <div class="macro-date">${escapeHtml(name)} · 申報期別 ${periodOfReport || '—'}（13F每季揭露，延遲可達45天，屬靜態快照）</div>
     <div class="pie-wrap">
       <div class="pie-chart" style="background: conic-gradient(${stops});"></div>
       <div class="pie-legend">${legend}</div>
