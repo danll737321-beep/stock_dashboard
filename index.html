@@ -134,6 +134,13 @@
   .pct-toggle-row button:hover{ filter:brightness(1.15); }
   .pct-toggle-row button:disabled{ color:var(--muted); cursor:not-allowed; filter:none; }
 
+  .apikey-input-wrap{ position:relative; flex:1; min-width:180px; }
+  .apikey-input-wrap input[type=password], .apikey-input-wrap input[type=text]{ width:100%; padding-right:38px; }
+  .apikey-input-wrap button{
+    position:absolute; right:4px; top:50%; transform:translateY(-50%);
+    background:transparent; border:none; cursor:pointer; font-size:15px; padding:6px 8px; line-height:1;
+  }
+
   .panel{
     background: var(--panel); border:1px solid var(--line); border-radius:3px; padding: 16px 18px; margin-bottom:16px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.4);
@@ -227,9 +234,13 @@
     <details class="adv-settings">
       <summary>進階設定（Twelve Data API金鑰／同業比較，選填）</summary>
       <div class="search-row" style="margin-top:10px;">
-        <input type="text" id="apiKeyInput" placeholder="Twelve Data API金鑰(選填，twelvedata.com免費申請，讓回測資料更穩定)">
+        <div class="apikey-input-wrap">
+          <input type="password" id="apiKeyInput" placeholder="Twelve Data API金鑰(選填，twelvedata.com免費申請，讓回測資料更穩定)" autocomplete="off">
+          <button type="button" id="apiKeyToggleBtn" title="顯示/隱藏金鑰">👁</button>
+        </div>
         <input type="text" id="peerInput" placeholder="同業比較代號，逗號分隔最多3檔，例如 MSFT,GOOGL,META(選填)">
       </div>
+      <div style="padding:0 14px 10px;color:var(--muted);font-size:11px;font-family:var(--mono);">金鑰會存在這台裝置瀏覽器的localStorage，重新整理網頁不用重貼；換裝置或清瀏覽器資料要重新輸入，不會上傳到任何伺服器。</div>
     </details>
 
     <div id="status"></div>
@@ -724,6 +735,26 @@ function checkTickerValidityBeforeQuery(ticker){
     hideTickerWarn();
   }
 }
+
+/* ============ Twelve Data金鑰：存在瀏覽器localStorage，重新整理網頁不用重貼 ============ */
+const TWELVE_DATA_KEY_STORAGE = 'stockDashboardTwelveDataKey';
+(function initApiKeyFromStorage(){
+  try{
+    const saved = localStorage.getItem(TWELVE_DATA_KEY_STORAGE);
+    if(saved) document.getElementById('apiKeyInput').value = saved;
+  }catch(e){ /* localStorage不可用（例如無痕模式）時安靜略過，不影響其他功能 */ }
+})();
+document.getElementById('apiKeyInput').addEventListener('change', (e) => {
+  try{
+    const v = e.target.value.trim();
+    if(v) localStorage.setItem(TWELVE_DATA_KEY_STORAGE, v);
+    else localStorage.removeItem(TWELVE_DATA_KEY_STORAGE);
+  }catch(err){ /* 同上，安靜略過 */ }
+});
+document.getElementById('apiKeyToggleBtn').addEventListener('click', () => {
+  const input = document.getElementById('apiKeyInput');
+  input.type = input.type === 'password' ? 'text' : 'password';
+});
 
 /* ============ K線 + 基本報價 ============ */
 async function loadChart(ticker, apiKey){
