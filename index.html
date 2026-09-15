@@ -1069,16 +1069,37 @@ async function loadOptionsSentiment(ticker){
 /* ============ 近期相關新聞（共用抓取邏輯） ============ */
 async function fetchNewsHeadlines(query, limit=6){
   return withCache(`news:${query}:${limit}`, 10*60*1000, async () => {
-    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant`;
-    const xmlText = await fetchText(url, 16000);
-    const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
-    const items = Array.from(doc.getElementsByTagName('item')).slice(0, limit);
-    return items.map(it => ({
-      title: it.getElementsByTagName('title')[0]?.textContent || '',
-      link: it.getElementsByTagName('link')[0]?.textContent || '#',
-      pubDate: it.getElementsByTagName('pubDate')[0]?.textContent || '',
-    }));
+    try{
+      return await fetchGoogleNewsRss(query, limit);
+    }catch(googleErr){
+      // Google News RSS透過免費代理常常被擋/逾時，改用Bing新聞RSS當備援來源，同樣是免費、不用金鑰
+      try{
+        return await fetchBingNewsRss(query, limit);
+      }catch(bingErr){
+        throw googleErr; // 兩個來源都失敗時，保留Google那個通常比較看得懂的錯誤訊息
+      }
+    }
   });
+}
+async function fetchGoogleNewsRss(query, limit){
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant`;
+  const xmlText = await fetchText(url, 14000);
+  return parseNewsRss(xmlText, limit);
+}
+async function fetchBingNewsRss(query, limit){
+  const url = `https://www.bing.com/news/search?q=${encodeURIComponent(query)}&format=RSS`;
+  const xmlText = await fetchText(url, 14000);
+  return parseNewsRss(xmlText, limit);
+}
+function parseNewsRss(xmlText, limit){
+  const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+  const items = Array.from(doc.getElementsByTagName('item')).slice(0, limit);
+  if(!items.length) throw new Error('RSS回應中查無新聞項目');
+  return items.map(it => ({
+    title: it.getElementsByTagName('title')[0]?.textContent || '',
+    link: it.getElementsByTagName('link')[0]?.textContent || '#',
+    pubDate: it.getElementsByTagName('pubDate')[0]?.textContent || '',
+  }));
 }
 function renderNewsRows(items){
   return items.map(it => {
